@@ -1,0 +1,78 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &-9186892985025726959
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 17d1008b78cb6e846889b7778282fbef, type: 3}
+  m_Name: AssetBundleDefinitions
+  m_EditorClassIdentifier: 
+  StagingPaths: []
+  assetBundles:
+  - assetBundleName: rdol.resources.assets
+    assets:
+    - {fileID: 102900000, guid: 7a19e2374078260459e36c61a9889b53, type: 3}
+  - assetBundleName: rdol.scenes.assets
+    assets:
+    - {fileID: 102900000, guid: c4dab0e1b2635834ab1c7efeb60304b5, type: 3}
+    - {fileID: 102900000, guid: 603436453445a4a4fa0a122b44956fad, type: 3}
+    - {fileID: 102900000, guid: 6a071584834baec4ca1ac0d882655bfb, type: 3}
+    - {fileID: 102900000, guid: d3a72721572608c4f8de246bf61394e0, type: 3}
+    - {fileID: 102900000, guid: 993239bde2e73a649a8387ed85ba11da, type: 3}
+--- !u!114 &-4541009516888199505
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f22bb7fd1d3b56a48bc52f8e407901d6, type: 3}
+  m_Name: ManifestIdentity
+  m_EditorClassIdentifier: 
+  StagingPaths: []
+  Author: author
+  Name: RDOL
+  Description: a
+  Version: 1,0.0
+  Dependencies: []
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e563561e08b6a3642a487177f5cfbb37, type: 3}
+  m_Name: Manifest
+  m_EditorClassIdentifier: 
+  Data:
+  - {fileID: -4541009516888199505}
+  - {fileID: 6949701101297906922}
+  - {fileID: -9186892985025726959}
+  identity: {fileID: -4541009516888199505}
+  QuickAccess: 0
+--- !u!114 &6949701101297906922
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2b7e13dda513544419a89926bd12ad8a, type: 3}
+  m_Name: AssemblyDefinitions
+  m_EditorClassIdentifier: 
+  StagingPaths: []
+  definitions:
+  - {fileID: 5897886265953266890, guid: 45a642603c32e434ba76c8a50ea026ae, type: 3}
+  - {fileID: 5897886265953266890, guid: 7ccde2ca0792a9c409c67bdcef3b6cd4, type: 3}
