@@ -8,6 +8,9 @@ public class GUIDReferenceReplacer : EditorWindow
 {
     private UnityEngine.Object sourceObject;
     private UnityEngine.Object targetObject;
+    private UnityEngine.Object[] targetFiles = new UnityEngine.Object[10];
+    private bool useFileScope = false;
+    private Vector2 scrollPosition;
 
     [MenuItem("Tools/批量替换对象引用 (GUID)")]
     public static void ShowWindow()
@@ -20,8 +23,67 @@ public class GUIDReferenceReplacer : EditorWindow
         GUILayout.Label("选择源对象和目标对象", EditorStyles.boldLabel);
         sourceObject = EditorGUILayout.ObjectField("源对象", sourceObject, typeof(UnityEngine.Object), false);
         targetObject = EditorGUILayout.ObjectField("目标对象", targetObject, typeof(UnityEngine.Object), false);
+        
+        EditorGUILayout.Space();
+        GUILayout.Label("替换范围设置", EditorStyles.boldLabel);
+        useFileScope = EditorGUILayout.Toggle("限制替换范围", useFileScope);
+        
+        if (useFileScope)
+        {
+            EditorGUI.indentLevel++;
+            
+            // 文件数量控制
+            int fileCount = EditorGUILayout.IntSlider("文件数量", targetFiles.Length, 1, 20);
+            if (fileCount != targetFiles.Length)
+            {
+                var newArray = new UnityEngine.Object[fileCount];
+                System.Array.Copy(targetFiles, newArray, Mathf.Min(targetFiles.Length, fileCount));
+                targetFiles = newArray;
+            }
+            
+            EditorGUILayout.LabelField("请选择要替换的具体文件:", EditorStyles.boldLabel);
+            
+            scrollPosition = EditorGUILayout.BeginScrollView(scrollPosition, GUILayout.Height(200));
+            
+            for (int i = 0; i < targetFiles.Length; i++)
+            {
+                EditorGUILayout.BeginHorizontal();
+                targetFiles[i] = EditorGUILayout.ObjectField($"文件 {i + 1}", targetFiles[i], typeof(UnityEngine.Object), false);
+                
+                // 验证文件有效性
+                if (targetFiles[i] != null)
+                {
+                    string filePath = AssetDatabase.GetAssetPath(targetFiles[i]);
+                    if (Directory.Exists(filePath))
+                    {
+                        EditorGUILayout.HelpBox("这是文件夹，不是文件", MessageType.Warning);
+                    }
+                    else if (filePath.EndsWith(".cs") || filePath.EndsWith(".dll"))
+                    {
+                        EditorGUILayout.HelpBox("脚本文件无法处理", MessageType.Warning);
+                    }
+                    else if (!filePath.EndsWith(".unity") && !filePath.EndsWith(".prefab") && !IsSupportedAsset(filePath))
+                    {
+                        EditorGUILayout.HelpBox("不支持的文件类型", MessageType.Warning);
+                    }
+                    else
+                    {
+                        EditorGUILayout.LabelField(Path.GetFileName(filePath), GUILayout.Width(150));
+                    }
+                }
+                EditorGUILayout.EndHorizontal();
+            }
+            
+            EditorGUILayout.EndScrollView();
+            
+            // 显示有效文件统计
+            int validFiles = GetValidFileCount();
+            EditorGUILayout.LabelField($"有效文件: {validFiles}/{targetFiles.Length}", EditorStyles.helpBox);
+            
+            EditorGUI.indentLevel--;
+        }
 
-        GUI.enabled = sourceObject != null && targetObject != null;
+        GUI.enabled = sourceObject != null && targetObject != null && (!useFileScope || (useFileScope && GetValidFileCount() > 0));
         if (GUILayout.Button("开始替换引用", GUILayout.Height(30)))
         {
             ReplaceAllReferences();
@@ -31,13 +93,22 @@ public class GUIDReferenceReplacer : EditorWindow
 
     private void ReplaceAllReferences()
     {
+        string scopeInfo = useFileScope ? $"在指定的 {GetValidFileCount()} 个文件中" : "在整个项目中";
         if (!EditorUtility.DisplayDialog("确认替换",
-            $"将项目中所有引用「{sourceObject.name}」的地方替换为「{targetObject.name}」？\n该操作不可撤销，请确保已备份项目。", "继续", "取消"))
+            $"将{scopeInfo}所有引用「{sourceObject.name}」的地方替换为「{targetObject.name}」？\n该操作不可撤销，请确保已备份项目。", "继续", "取消"))
             return;
 
         float startTime = (float)EditorApplication.timeSinceStartup;
 
-        string[] allAssets = AssetDatabase.GetAllAssetPaths();
+        string[] allAssets;
+        if (useFileScope)
+        {
+            allAssets = GetSelectedFilePaths();
+        }
+        else
+        {
+            allAssets = AssetDatabase.GetAllAssetPaths();
+        }
         int total = allAssets.Length;
         int processed = 0;
         int modifiedCount = 0;
@@ -205,5 +276,63 @@ public class GUIDReferenceReplacer : EditorWindow
         }
 
         return modified;
+    }
+
+    private string[] GetSelectedFilePaths()
+    {
+        var filePaths = new System.Collections.Generic.List<string>();
+        
+        foreach (var fileObj in targetFiles)
+        {
+            if (fileObj != null)
+            {
+                string filePath = AssetDatabase.GetAssetPath(fileObj);
+                
+                // 验证文件有效性
+                if (!Directory.Exists(filePath) && 
+                    !filePath.EndsWith(".cs") && 
+                    !filePath.EndsWith(".dll") &&
+                    (filePath.EndsWith(".unity") || filePath.EndsWith(".prefab") || IsSupportedAsset(filePath)))
+                {
+                    filePaths.Add(filePath);
+                }
+            }
+        }
+        
+        return filePaths.ToArray();
+    }
+
+    private int GetValidFileCount()
+    {
+        int count = 0;
+        foreach (var fileObj in targetFiles)
+        {
+            if (fileObj != null)
+            {
+                string filePath = AssetDatabase.GetAssetPath(fileObj);
+                if (!Directory.Exists(filePath) && 
+                    !filePath.EndsWith(".cs") && 
+                    !filePath.EndsWith(".dll") &&
+                    (filePath.EndsWith(".unity") || filePath.EndsWith(".prefab") || IsSupportedAsset(filePath)))
+                {
+                    count++;
+                }
+            }
+        }
+        return count;
+    }
+
+    private bool IsSupportedAsset(string path)
+    {
+        // 支持常见的Unity资源文件类型
+        string[] supportedExtensions = { ".mat", ".anim", ".controller", ".asset", ".physicMaterial", ".renderTexture" };
+        
+        foreach (string ext in supportedExtensions)
+        {
+            if (path.EndsWith(ext))
+                return true;
+        }
+        
+        return false;
     }
 }

@@ -662,8 +662,8 @@ MonoBehaviour:
       m_Calls: []
   m_text: "\u540D\u5B57\u6700\u591A\u516D\u4E2A\u5B57"
   m_isRightToLeft: 0
-  m_fontAsset: {fileID: 11400000, guid: 85b131744f45a214dbb0499ce946ce8c, type: 2}
-  m_sharedMaterial: {fileID: 6722539970368968708, guid: 85b131744f45a214dbb0499ce946ce8c, type: 2}
+  m_fontAsset: {fileID: 11400000, guid: 9f4c761019fdc114582ef22210ed8264, type: 2}
+  m_sharedMaterial: {fileID: 3919045396158405862, guid: 9f4c761019fdc114582ef22210ed8264, type: 2}
   m_fontSharedMaterials: []
   m_fontMaterial: {fileID: 0}
   m_fontMaterials: []

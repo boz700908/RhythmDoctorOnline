@@ -14,9 +14,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   StagingPaths: []
   assetBundles:
-  - assetBundleName: rdol.resources.assets
-    assets:
-    - {fileID: 102900000, guid: 7a19e2374078260459e36c61a9889b53, type: 3}
   - assetBundleName: rdol.scenes.assets
     assets:
     - {fileID: 102900000, guid: c4dab0e1b2635834ab1c7efeb60304b5, type: 3}
@@ -24,6 +21,9 @@ MonoBehaviour:
     - {fileID: 102900000, guid: 6a071584834baec4ca1ac0d882655bfb, type: 3}
     - {fileID: 102900000, guid: d3a72721572608c4f8de246bf61394e0, type: 3}
     - {fileID: 102900000, guid: 993239bde2e73a649a8387ed85ba11da, type: 3}
+  - assetBundleName: rdol.resources.assets
+    assets:
+    - {fileID: 102900000, guid: 7a19e2374078260459e36c61a9889b53, type: 3}
 --- !u!114 &-4541009516888199505
 MonoBehaviour:
   m_ObjectHideFlags: 0

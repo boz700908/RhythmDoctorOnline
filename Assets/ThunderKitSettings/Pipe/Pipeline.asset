@@ -32,8 +32,8 @@ MonoBehaviour:
   Active: 1
   AssetBundleBuildOptions: 0
   buildTarget: 5
-  recurseDirectories: 0
-  simulate: 0
+  recurseDirectories: 1
+  simulate: 1
   BundleArtifactPath: <AssetBundleStaging>
 --- !u!114 &11400000
 MonoBehaviour:

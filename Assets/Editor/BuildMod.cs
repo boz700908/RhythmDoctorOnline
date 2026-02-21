@@ -163,6 +163,11 @@ public class BuildMod : EditorWindow
             if (!Directory.Exists(modPath))
             {
                 Directory.CreateDirectory(modPath);
+            } 
+            else
+            {
+                Directory.Delete(modPath, true);
+                Directory.CreateDirectory(modPath);
             }
             string[] assetsBundles = Directory.GetFiles(Path.Combine(outputPath, "AssetBundleStaging"), "*.assets", SearchOption.AllDirectories);
             foreach (var assetsBundle in assetsBundles)

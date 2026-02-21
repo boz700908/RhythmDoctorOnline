@@ -12,9 +12,8 @@ using UnityEngine.SceneManagement;
 [BepInPlugin("guid", "RDOnline", "1.0.0")]
 public class BepInModEntry : BaseUnityPlugin
 {
-    AssetBundle scenesBundle;
-    AssetBundle resourcesBundle;
-    Assembly assembly;
+    private AssetBundle checkUpdateScene;
+    private AssetBundle checkUpdateResources;
     public static string modPath = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
     // Start is called before the first frame update
     void Start()
@@ -22,9 +21,9 @@ public class BepInModEntry : BaseUnityPlugin
         //TODO: 实现下载dll和ab包并加载,这里是冷加载
         try
         {
-            scenesBundle = AssetBundle.LoadFromFile(Path.Combine(modPath,"rdol.scenes.assets"));
-            resourcesBundle = AssetBundle.LoadFromFile(Path.Combine(modPath,"rdol.resources.assets"));
-            assembly = Assembly.LoadFrom(Path.Combine(modPath,"RDOL.dll"));
+            checkUpdateScene = AssetBundle.LoadFromFile(Path.Combine(modPath,"checkupdate.scene.assets"));
+            checkUpdateResources = AssetBundle.LoadFromFile(Path.Combine(modPath,"checkupdate.resources.assets"));
+            Assembly.LoadFile(Path.Combine(modPath, "CheckUpdate.dll"));
             StartCoroutine(DelayEntry());
         }
         catch (Exception e)
@@ -32,21 +31,7 @@ public class BepInModEntry : BaseUnityPlugin
             Logger.LogError(e.ToString());
         }
     }
-
-    private void OnGUI()
-    {
-        if (GUILayout.Button("进入"))
-        {
-            try
-            {
-                SceneManager.LoadScene(scenesBundle.GetAllScenePaths().First(a => a.Contains("StartUp")));
-            }
-            catch (Exception e)
-            {
-                Logger.LogError(e);
-            }
-        }
-    }
+    
 
     private IEnumerator DelayEntry(
         [CallerMemberName] string memberName = "",
@@ -55,7 +40,7 @@ public class BepInModEntry : BaseUnityPlugin
     {
         Logger.LogInfo($"延迟入口启动 (调用者: {memberName}, 文件: {sourceFilePath}, 行号: {sourceLineNumber})");
         yield return new WaitForSeconds(3);
-        SceneManager.LoadScene(scenesBundle.GetAllScenePaths().First(a => a.Contains("StartUp")));
+        SceneManager.LoadScene("scnCheckUpdate");
     }
 
     private void OnDestroy()
