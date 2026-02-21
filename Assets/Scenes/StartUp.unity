@@ -963,8 +963,10 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::RDOnline.GameConfig
   IsDev: 0
-  DevServerUrl: localhost:4005
-  ProdServerUrl: 69.165.65.93:4005
+  DevServerUrl: localhost:3005
+  ProdServerUrl: 69.165.65.93:3005
+  Pan123TokenUrlDev: http://localhost:3004/pan123/token
+  Pan123TokenUrlProd: https://rdonlineapi.rhythmdoctor.top/pan123/token
   BPM: 120
 --- !u!1001 &1550016137
 PrefabInstance:
