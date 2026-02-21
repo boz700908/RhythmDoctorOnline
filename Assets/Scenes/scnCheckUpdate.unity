@@ -2359,7 +2359,7 @@ MonoBehaviour:
   DevServerURL: http://localhost:4004
   ProdServerURL: https://adofaionlineapi.adofaitools.top
   checkUpdatePanel: {fileID: 210225442}
-  progressBarImage: {fileID: 210225439}
+  progressBarImage: {fileID: 348110682}
   txtTitle: {fileID: 1976270229}
   txtStep: {fileID: 501946574}
   txtProgress: {fileID: 1948265148}

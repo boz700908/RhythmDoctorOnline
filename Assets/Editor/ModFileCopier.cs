@@ -32,6 +32,7 @@ namespace Editor
         [MenuItem("Tools/启动游戏")]
         public static void StartGame()
         {
+            CopyModFiles();
             string modDir = Path.Combine(gamePluginsPath, "RDOL");
             if (!Directory.Exists(modDir))
             {

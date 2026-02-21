@@ -14,7 +14,8 @@
         "DOTween.dll",
         "Assembly-CSharp.dll",
         "RDTools.dll",
-        "Assembly-CSharp-firstpass.dll"
+        "Assembly-CSharp-firstpass.dll",
+        "0Harmony.dll"
     ],
     "autoReferenced": true,
     "defineConstraints": [],

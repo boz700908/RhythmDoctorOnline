@@ -60,8 +60,15 @@ namespace RDOnline.Utils
             }*/
             return new RankScore();
         }
+
+        public static void LoadLevel(string path)
+        {
+            scnBase.currentLevelSelect = "ScnRoom";
+            scnGame.pauseBlocked = true;
+            scnBase.GoToLevel(path);
+        }
     }
-    
+#if ADOFAI
     public struct RankScore
     {
         public int perfects;
@@ -83,4 +90,46 @@ namespace RDOnline.Utils
             return $"{score} {accuracy:N2}% {xAccuracy:N2}%";
         }
     }
+#endif
+    
+#if RHYTHMDOCTOR
+    public struct RankScore
+    {
+        public string rank;
+
+        public int earlyOffsetsSum;
+
+        public int lateOffsetsSum;
+
+        public int totalOffsetsSum;
+
+        public int earlyOffsetsSumP1;
+
+        public int lateOffsetsSumP1;
+
+        public int totalOffsetsSumP1;
+
+        public int earlyOffsetsSumP2;
+
+        public int lateOffsetsSumP2;
+
+        public int totalOffsetsSumP2;
+
+        public float mistakes;
+
+        public float mistakesP1;
+
+        public float mistakesP2;
+        
+        public string score => ToString();
+        public override string ToString()
+        {
+            return $"总计 : 提前{earlyOffsetsSum}帧, 滞后{lateOffsetsSum}帧, 总共{totalOffsetsSum}帧\n" +
+                   /*$"玩家1 : 提前{earlyOffsetsSumP1}帧, 滞后{lateOffsetsSumP1}帧, 总共{totalOffsetsSumP1}帧\n" +
+                   $"玩家2 : 提前{earlyOffsetsSumP2}帧, 滞后{lateOffsetsSumP2}帧, 总共{totalOffsetsSumP2}帧\n" +*/
+                   $"判定: {mistakes}\n" +
+                   $"评分: {rank}";
+        }
+    }
+#endif
 }

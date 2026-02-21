@@ -11,7 +11,9 @@
     "precompiledReferences": [
         "BepInEx.dll",
         "DOTween.dll",
-        "Assembly-CSharp-firstpass.dll"
+        "Assembly-CSharp-firstpass.dll",
+        "Assembly-CSharp.dll",
+        "0Harmony.dll"
     ],
     "autoReferenced": true,
     "defineConstraints": [],

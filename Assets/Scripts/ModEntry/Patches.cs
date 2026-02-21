@@ -5,7 +5,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using Object = UnityEngine.Object;
 #pragma warning disable 0455
-namespace RDOnline
+namespace ModEntry
 {
 #if RHYTHMDOCTOR
     public class Patches
@@ -14,7 +14,7 @@ namespace RDOnline
         [HarmonyPatch(typeof(scnMenu), "Awake")]
         public class Patch_scnMenu_Start
         {
-            private static void Prefix(scnMenu __instance)
+            public static void Prefix(scnMenu __instance)
             {
                 RectTransform optionsContainer = __instance.optionsContainer;
                 if (optionsContainer != null)
@@ -35,7 +35,7 @@ namespace RDOnline
                 }
             }
 
-            private static void Postfix(scnMenu __instance)
+            public static void Postfix(scnMenu __instance)
             {
                 RectTransform options = __instance.options;
                 if (options != null)
@@ -59,7 +59,7 @@ namespace RDOnline
             {
                 if (key == "mainMenu." + modName)
                 {
-                    __result = "Rhythm Cafe";
+                    __result = modName;
                     exists = true;
                     return false;
                 }
