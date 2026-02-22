@@ -659,8 +659,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 419.25113, y: -0}
-  m_SizeDelta: {x: 788.50226, y: 0}
+  m_AnchoredPosition: {x: 419.04532, y: -0}
+  m_SizeDelta: {x: 788.09064, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &861379902
 MonoBehaviour:
@@ -2355,7 +2355,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b331062e3412615498d0358676ffd8f9, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  IsDev: 1
+  IsDev: 0
   DevServerURL: http://localhost:3004
   ProdServerURL: https://rdonlineapi.rhythmdoctor.top
   checkUpdatePanel: {fileID: 210225442}
@@ -2363,7 +2363,7 @@ MonoBehaviour:
   txtTitle: {fileID: 1976270229}
   txtStep: {fileID: 501946574}
   txtProgress: {fileID: 1948265148}
-  txtAnnouncement: {fileID: 1657144651}
+  txtAnnouncement: {fileID: 861379903}
   scrollAnnouncement: {fileID: 987637006}
   enterGamePanel: {fileID: 683028670}
   btnEnterGame: {fileID: 683028667}
