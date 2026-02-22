@@ -49,8 +49,7 @@ namespace RDOnline
                     //按住Alt+Enter后松开
                     if (!Screen.fullScreen)
                     {
-                        Screen.fullScreenMode = FullScreenMode.FullScreenWindow;
-                        Screen.fullScreen = true;
+                        Screen.SetResolution(Screen.currentResolution.width, Screen.currentResolution.height, FullScreenMode.FullScreenWindow);
                     }
                     Cursor.visible = true;
                 }
