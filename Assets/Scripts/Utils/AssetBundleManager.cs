@@ -1,6 +1,7 @@
 ﻿using System;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -13,22 +14,26 @@ namespace RDOnline.Utils
         public AssetBundle sceneBundle;        
         public AssetBundle resourcesBundle;
         
-        private readonly string LoadPath = Path.Combine(Application.dataPath, "AssetBundles");
+        private readonly string LoadPath = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
         private AssetBundleManager()
         {
             try
             {
                 instance = this;
-                sceneBundle = AssetBundle.GetAllLoadedAssetBundles().ToArray().First(a => a.name.Contains("scenes"));
-                resourcesBundle = AssetBundle.GetAllLoadedAssetBundles().ToArray().First(a => a.name.Contains("resources"));
+                sceneBundle = AssetBundle.GetAllLoadedAssetBundles()
+                    .ToArray()
+                    .First(a => a.name.Contains("rdol.scenes"));
+                resourcesBundle = AssetBundle.GetAllLoadedAssetBundles()
+                    .ToArray()
+                    .First(a => a.name.Contains("rdol.resources"));
             
                 if (sceneBundle == null)
                 {
-                    sceneBundle = AssetBundle.LoadFromFile(Path.Combine(LoadPath, "adofaiol.scenes.assets.bundle"));
+                    sceneBundle = AssetBundle.LoadFromFile(Path.Combine(LoadPath, "rdol.scenes.assets"));
                 }
                 if (resourcesBundle == null)
                 {
-                    resourcesBundle = AssetBundle.LoadFromFile(Path.Combine(LoadPath, "adofaiol.resources.assets.bundle"));
+                    resourcesBundle = AssetBundle.LoadFromFile(Path.Combine(LoadPath, "rdol.resources.assets"));
                 }
             }
             catch (Exception e)
@@ -39,7 +44,8 @@ namespace RDOnline.Utils
         
         public T LoadAsset<T>(string pathOrName) where T : UnityEngine.Object
         {
-            T result = null;
+            T result = Resources.Load<T>(pathOrName);
+            if (result != null) return result;
             result = resourcesBundle.LoadAsset<T>(pathOrName);
             if (result == null)
             {

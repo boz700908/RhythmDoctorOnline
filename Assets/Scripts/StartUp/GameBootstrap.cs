@@ -1,3 +1,5 @@
+using System;
+using HarmonyLib;
 using UnityEngine;
 
 namespace RDOnline
@@ -9,6 +11,15 @@ namespace RDOnline
     {
         private void Awake()
         {
+            try
+            {
+                Harmony harmony = new Harmony("RDOnline.GameBootstrap");
+                harmony.PatchAll(typeof(Patches));
+            }
+            catch (Exception e)
+            {
+                Debug.LogWarning(e);
+            }
             DontDestroyOnLoad(gameObject);
         }
     }

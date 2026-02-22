@@ -1,8 +1,12 @@
 ﻿using System;
+using System.Diagnostics;
+using System.IO;
 using System.Reflection;
 using HarmonyLib;
-using UnityEngine;
+using Newtonsoft.Json;
+using RDOnline.Utils;
 using UnityEngine.UI;
+using Debug = UnityEngine.Debug;
 using Object = UnityEngine.Object;
 #pragma warning disable 0455
 namespace RDOnline
@@ -10,78 +14,37 @@ namespace RDOnline
 #if RHYTHMDOCTOR
     public class Patches
     {
-        private const string modName = "RDOL";
-        [HarmonyPatch(typeof(scnMenu), "Awake")]
-        public class Patch_scnMenu_Start
+        public static RankScore RankScore;
+        [HarmonyPatch(typeof(scnGame), "EndLevel")]
+        public static class scnGame_EndLevel_Patch
         {
-            private static void Prefix(scnMenu __instance)
+            public static void Prefix(scnGame __instance)
             {
-                RectTransform optionsContainer = __instance.optionsContainer;
-                if (optionsContainer != null)
+                try
                 {
-                    try
+                    Rank rankFromMistakes = __instance.currentLevel.GetRankFromMistakes();
+                    string rank = rankFromMistakes.ToString();
+                    RankScore rankScore = new RankScore
                     {
-                        Transform val = optionsContainer.Find("customLevels");
-                        GameObject val2 = Object.Instantiate(val.gameObject);
-                        val2.transform.SetParent(optionsContainer.transform, false);
-                        val2.transform.SetSiblingIndex(val.GetSiblingIndex() + 1);
-                        val2.name = modName;
-                        val2.gameObject.SetActive(true);
-                    }
-                    catch (Exception ex)
-                    {
-                        Debug.Log(ex);
-                    }
+                        rank = rank,
+                        earlyOffsetsSum = __instance.mistakesManager.earlyOffsetsSum,
+                        lateOffsetsSum = __instance.mistakesManager.lateOffsetsSum,
+                        totalOffsetsSum = __instance.mistakesManager.totalOffsetsSum,
+                        earlyOffsetsSumP1 = __instance.mistakesManager.earlyOffsetsSumP1,
+                        lateOffsetsSumP1 = __instance.mistakesManager.lateOffsetsSumP1,
+                        totalOffsetsSumP1 = __instance.mistakesManager.totalOffsetsSumP1,
+                        earlyOffsetsSumP2 = __instance.mistakesManager.earlyOffsetsSumP2,
+                        lateOffsetsSumP2 = __instance.mistakesManager.lateOffsetsSumP2,
+                        totalOffsetsSumP2 = __instance.mistakesManager.totalOffsetsSumP2,
+                        mistakes = __instance.mistakesManager.mistakes,
+                        mistakesP1 = __instance.mistakesManager.mistakesP1,
+                        mistakesP2 = __instance.mistakesManager.mistakesP2
+                    };
+                    RankScore = rankScore;
                 }
-            }
-
-            private static void Postfix(scnMenu __instance)
-            {
-                RectTransform options = __instance.options;
-                if (options != null)
+                catch (Exception ex)
                 {
-                    Transform val = __instance.optionsContainer.Find(modName);
-                    if (val != null)
-                    {
-                        Rect rect = val.GetComponent<RectTransform>().rect;
-                        float height = rect.height;
-                        RectTransform component = options.GetComponent<RectTransform>();
-                        component.position = new Vector2(component.position.x, component.position.y + height / 1.5f);
-                    }
-                }
-            }
-        }
-
-        [HarmonyPatch(typeof(RDString), "GetWithCheck")]
-        public static class RDString_GetWithCheck
-        {
-            private static bool Prefix(string key, out bool exists, ref string __result)
-            {
-                if (key == "mainMenu." + modName)
-                {
-                    __result = "Rhythm Cafe";
-                    exists = true;
-                    return false;
-                }
-                exists = false;
-                return true;
-            }
-        }
-
-        [HarmonyPatch(typeof(scnMenu), "SelectOption")]
-        public static class scnMenu_SelectOption
-        {
-            private static void Prefix(scnMenu __instance)
-            {
-                int num = (int)__instance.GetType()
-                    .GetField("currentOption", BindingFlags.Instance | BindingFlags.NonPublic)
-                    .GetValue(__instance);
-                if ((__instance.GetType()
-                        .GetField("optionsText", BindingFlags.Instance | BindingFlags.NonPublic)
-                        .GetValue(__instance) as Text[])[num].gameObject.name == modName)
-                {
-                    __instance.conductor.StopSong();
-                    typeof(scnMenu).GetMethod("TransitionToScene", BindingFlags.Instance | BindingFlags.NonPublic).Invoke(__instance, new object[1] { "scnCheckUpdate" });
+                    Debug.Log(ex);
                 }
             }
         }
