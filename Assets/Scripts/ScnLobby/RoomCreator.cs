@@ -1,5 +1,3 @@
-using System.IO;
-using System.Text.RegularExpressions;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
@@ -27,9 +25,7 @@ namespace RDOnline.ScnLobby
         public Button CreateButton;
 
         [Header("引用")]
-        [Tooltip("文件浏览器")]
-        public FileBrowser FileBrowser;
-        [Tooltip("谱面预览")]
+        [Tooltip("谱面预览（显示选中的社区关卡信息）")]
         public ChartPreview ChartPreview;
 
         private void Start()
@@ -86,23 +82,20 @@ namespace RDOnline.ScnLobby
             if (CreateButton != null)
                 CreateButton.interactable = false;
 
-            // 获取数据
             string roomName = RoomNameInput.text.Trim();
             int maxPlayers = (int)PlayerCountSlider.value;
             string password = PasswordInput.text.Trim();
             string chartUrl = ChartPreview.UploadedChartUrl;
-            string chartName = GetChartNameFromFile();
+            string chartName = SelectedLevel.ChartName;
 
             if (string.IsNullOrEmpty(chartName))
             {
-                ScrAlert.Show("无法读取谱面名称", true);
-                // 重新启用按钮
+                ScrAlert.Show("无法获取谱面名称", true);
                 if (CreateButton != null)
                     CreateButton.interactable = true;
                 return;
             }
 
-            // 发送创建房间请求
             CreateRoom(roomName, maxPlayers, password, chartUrl, chartName);
         }
 
@@ -118,55 +111,20 @@ namespace RDOnline.ScnLobby
                 return false;
             }
 
-            // 检查是否已上传谱面
+            // 检查是否已选择社区关卡（选中后 ChartPreview 会设置 UploadedChartUrl）
             if (ChartPreview == null || string.IsNullOrEmpty(ChartPreview.UploadedChartUrl))
             {
-                ScrAlert.Show("请先上传谱面", true);
+                ScrAlert.Show("请先在左侧选择关卡", true);
                 return false;
             }
 
-            // 检查是否选择了文件
-            if (FileBrowser == null || string.IsNullOrEmpty(FileBrowser.SelectedFilePath))
+            if (SelectedLevel.Current == null || string.IsNullOrEmpty(SelectedLevel.ChartName))
             {
-                ScrAlert.Show("请先选择谱面文件", true);
+                ScrAlert.Show("请先在左侧选择关卡", true);
                 return false;
             }
 
             return true;
-        }
-
-        /// <summary>
-        /// 从选中的文件中获取谱面名称
-        /// </summary>
-        private string GetChartNameFromFile()
-        {
-            try
-            {
-                string filePath = FileBrowser.SelectedFilePath;
-                Debug.Log($"[RoomCreator] 选中的文件路径: {filePath}");
-
-                if (string.IsNullOrEmpty(filePath))
-                {
-                    Debug.LogError("[RoomCreator] FileBrowser.SelectedFilePath 为空");
-                    return null;
-                }
-
-                if (!File.Exists(filePath))
-                {
-                    Debug.LogError($"[RoomCreator] 文件不存在: {filePath}");
-                    return null;
-                }
-
-                // 获取文件名（不带扩展名）
-                string chartName = Path.GetFileNameWithoutExtension(filePath);
-                Debug.Log($"[RoomCreator] 谱面名称: {chartName}");
-                return chartName;
-            }
-            catch (System.Exception e)
-            {
-                Debug.LogError($"[RoomCreator] 读取谱面名称失败: {e.Message}");
-                return null;
-            }
         }
 
         /// <summary>

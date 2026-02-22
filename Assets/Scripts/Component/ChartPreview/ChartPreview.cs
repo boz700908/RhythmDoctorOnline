@@ -10,6 +10,8 @@ using TMPro;
 using DG.Tweening;
 using RDOnline;
 using RDOnline.Audio;
+using RhythmCafe.Level;
+using RDOnline.ScnLobby;
 
 namespace RDOnline.Component
 {
@@ -46,6 +48,8 @@ namespace RDOnline.Component
         private string _currentChartFolder;
         private bool _isPlaying;
         private bool _isUploading;
+        private LevelDocument _lastDisplayedLevel;
+        private Coroutine _loadCoverUrlCoroutine;
 
         /// <summary>
         /// IChartPreview 接口实现 - 是否正在播放
@@ -80,11 +84,80 @@ namespace RDOnline.Component
 
         private void Update()
         {
+            // 同步关卡浏览器选中：选中社区关卡时刷新预览
+            if (SelectedLevel.Current == null)
+            {
+                if (_lastDisplayedLevel != null)
+                    ClearCommunityLevel();
+            }
+            else if (SelectedLevel.Current != _lastDisplayedLevel)
+            {
+                SetLevelFromCommunity(SelectedLevel.Current);
+            }
+
             // 封面旋转动画
             if (CoverImage != null && CoverImage.texture != null)
             {
                 CoverImage.transform.Rotate(0, 0, -RotationSpeed * Time.deltaTime);
             }
+        }
+
+        /// <summary>
+        /// 使用社区关卡信息填充预览（默认使用 url2 作为谱面 URL）
+        /// </summary>
+        private void SetLevelFromCommunity(LevelDocument doc)
+        {
+            _lastDisplayedLevel = doc;
+            UploadedChartUrl = !string.IsNullOrEmpty(doc.url2) ? doc.url2 : doc.url;
+
+            if (SongNameText != null)
+                SongNameText.text = doc.song ?? "Unknown";
+            if (AuthorText != null)
+                AuthorText.text = doc.authors != null && doc.authors.Count > 0 ? string.Join(", ", doc.authors) : "Unknown";
+
+            if (!string.IsNullOrEmpty(doc.image))
+            {
+                if (_loadCoverUrlCoroutine != null)
+                    StopCoroutine(_loadCoverUrlCoroutine);
+                _loadCoverUrlCoroutine = StartCoroutine(LoadCoverImageFromUrl(doc.image));
+            }
+            else if (CoverImage != null)
+            {
+                CoverImage.texture = null;
+            }
+
+            if (AudioSource != null && AudioSource.clip != null)
+            {
+                if (_isPlaying) Stop();
+                AudioSource.clip = null;
+            }
+
+            if (UploadButton != null)
+                UploadButton.gameObject.SetActive(false);
+            if (ProgressBar != null)
+                ProgressBar.transform.localScale = new Vector3(0f, ProgressBar.transform.localScale.y, ProgressBar.transform.localScale.z);
+        }
+
+        private void ClearCommunityLevel()
+        {
+            _lastDisplayedLevel = null;
+            UploadedChartUrl = null;
+            if (SongNameText != null) SongNameText.text = "";
+            if (AuthorText != null) AuthorText.text = "";
+            if (CoverImage != null) CoverImage.texture = null;
+            if (UploadButton != null)
+                UploadButton.gameObject.SetActive(true);
+        }
+
+        private IEnumerator LoadCoverImageFromUrl(string url)
+        {
+            using (var request = UnityWebRequestTexture.GetTexture(url))
+            {
+                yield return request.SendWebRequest();
+                if (request.result == UnityWebRequest.Result.Success && CoverImage != null)
+                    CoverImage.texture = DownloadHandlerTexture.GetContent(request);
+            }
+            _loadCoverUrlCoroutine = null;
         }
 
         /// <summary>
