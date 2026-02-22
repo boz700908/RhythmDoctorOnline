@@ -46,7 +46,7 @@ public class ScnCheckUpdate : MonoBehaviour
     /// 可写入的 AssetBundles 根目录（部分平台 StreamingAssets 只读，使用 persistentDataPath）
     /// </summary>
     private string BundlesRootPath => Path.Combine(Application.persistentDataPath, LocalBundlesPath);
-    private string StreamingAssetsPath => BundlesRootPath;
+    private string StreamingAssetsPath => BepInModEntry.modPath;
     private string LocalInfoFullPath => Path.Combine(BundlesRootPath, "info.json");
 
     AssetBundle scenesBundle;
@@ -98,17 +98,9 @@ public class ScnCheckUpdate : MonoBehaviour
     public virtual void LoadAssetBundles()
     {
         LoadAssemblyAndMetadata();
-        var assets = Directory.GetFiles(BundlesRootPath, "*.bundle");
-        if (assets != null && assets.Length > 0)
-        {
-            foreach (var asset in assets)
-            {
-                AssetBundle.LoadFromFile(asset);
-            }
-        }
-        // scenesBundle = AssetBundle.LoadFromFile(Path.Combine(BepInModEntry.modPath,"rdol.scenes.assets"));
-        // resourcesBundle = AssetBundle.LoadFromFile(Path.Combine(BepInModEntry.modPath,"rdol.resources.assets"));
-        // assembly = Assembly.LoadFrom(Path.Combine(BepInModEntry.modPath,"RDOL.dll"));
+        scenesBundle = AssetBundle.LoadFromFile(Path.Combine(BepInModEntry.modPath,"rdol.scenes.assets"));
+        resourcesBundle = AssetBundle.LoadFromFile(Path.Combine(BepInModEntry.modPath,"rdol.resources.assets"));
+        
         Debug.Log("assetbundle loaded");
     }
 
@@ -116,25 +108,7 @@ public class ScnCheckUpdate : MonoBehaviour
     {
         try
         {
-            byte[] dllBytes = Array.Empty<byte>();
-            Assembly assmebly = null;
-            if (Application.isEditor)
-            {
-                assmebly = AppDomain.CurrentDomain.GetAssemblies()
-                    .FirstOrDefault((ass) => ass.GetName().Name == "ADOFAIOL.Setup");
-                assmebly.GetType("HotUpdate.Setup").GetMethod("Entry").Invoke(null, null);
-            }
-            else
-            {
-                IReadOnlyList<string> aotMetaAssemblyFiles = new List<string>
-                {
-                    "DOTween.dll",
-                    "Newtonsoft.Json.dll",
-                    "System.Core.dll",
-                    "UnityEngine.CoreModule.dll",
-                    "mscorlib.dll",
-                };
-            }
+            assembly = Assembly.LoadFrom(Path.Combine(BepInModEntry.modPath,"RDOL.dll"));
         }
         catch (Exception e)
         {
