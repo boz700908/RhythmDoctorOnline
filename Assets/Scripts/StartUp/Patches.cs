@@ -42,6 +42,7 @@ namespace RDOnline
                         mistakesP2 = __instance.mistakesManager.mistakesP2
                     };
                     RankScore = rankScore;
+                    Screen.fullScreen = true;
                     Cursor.visible = true;
                 }
                 catch (Exception ex)

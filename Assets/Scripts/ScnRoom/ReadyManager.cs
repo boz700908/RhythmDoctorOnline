@@ -271,9 +271,9 @@ namespace RDOnline.ScnRoom
 
             // 获取玩家分数
             string score = "";
-            if (!string.IsNullOrEmpty(RoomData.CurrentScore.score))
+            if (!string.IsNullOrEmpty(Patches.RankScore.score))
             {
-                score = RoomData.CurrentScore.ToString();
+                score = Patches.RankScore.ToString();
                 Debug.Log($"[ReadyManager] 玩家分数: {score}");
             }
             else
