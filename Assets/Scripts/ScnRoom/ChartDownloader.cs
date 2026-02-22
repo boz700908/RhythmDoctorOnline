@@ -242,7 +242,7 @@ namespace RDOnline.ScnRoom
         }
 
         /// <summary>
-        /// 在目录下递归查找第一个 .rdlevel 文件，用于默认加载谱面
+        /// 在目录下查找谱面文件：优先 main.rdlevel（含子目录），不存在则返回第一个找到的 .rdlevel
         /// </summary>
         public static string GetFirstRdlevelPath(string directory)
         {
@@ -250,8 +250,15 @@ namespace RDOnline.ScnRoom
                 return null;
             try
             {
+                string firstAny = null;
                 foreach (string path in Directory.GetFiles(directory, "*.rdlevel", SearchOption.AllDirectories))
-                    return path;
+                {
+                    if (firstAny == null)
+                        firstAny = path;
+                    if (Path.GetFileName(path).Equals("main.rdlevel", StringComparison.OrdinalIgnoreCase))
+                        return path;
+                }
+                return firstAny;
             }
             catch (Exception e)
             {
