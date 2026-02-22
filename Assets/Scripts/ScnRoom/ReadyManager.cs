@@ -240,18 +240,23 @@ namespace RDOnline.ScnRoom
             // 显示游戏开始提示
             ScrAlert.Show("游戏开始！", true);
 
-            // 设置标志位，表示即将进入游戏
             RoomData.IsReturningFromGame = true;
-            string levelPath = Path.Combine(Application.persistentDataPath, "Chart",RoomData.Instance.ChartName) + ".adofai";
+
+            // 默认加载找到的第一个 .rdlevel 文件（仅用于校验与日志，实际进游戏逻辑保持原样）
+            string chartDir = ChartDownloader.Instance != null
+                ? ChartDownloader.Instance.GetChartDirectory()
+                : Path.Combine(Application.persistentDataPath, "Chart");
+            string levelPath = ChartDownloader.GetFirstRdlevelPath(chartDir);
+            if (string.IsNullOrEmpty(levelPath))
+            {
+                UnityEngine.Debug.LogError("[ReadyManager] 未找到 .rdlevel 谱面，无法进入游戏");
+                ScrAlert.Show("未找到谱面文件", true);
+                return;
+            }
             Debug.Log("Enter level：" + levelPath);
-            /*GCS.customLevelId = "0";
-            GCS.customLevelPaths = new []{levelPath};
-            GCS.useNoFail = true;
-            IsWantToPlay = true;
-            GCS.sceneToLoad = SceneManager.GetActiveScene().name;*/
+
             // 跳转到游戏场景
             ScnLoading.LoadScenes("scnGame");
-            //Application.persistentDataPath, "Chart"，RoomData.Instance.ChartName.adofai
         }
 
         /// <summary>

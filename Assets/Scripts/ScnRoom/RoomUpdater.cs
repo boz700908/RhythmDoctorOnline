@@ -1,10 +1,10 @@
-using System.IO;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 using RDOnline;
 using RDOnline.Component;
 using RDOnline.Network;
+using RDOnline.ScnLobby;
 
 namespace RDOnline.ScnRoom
 {
@@ -26,9 +26,7 @@ namespace RDOnline.ScnRoom
         public Button UpdateButton;
 
         [Header("引用")]
-        [Tooltip("文件浏览器")]
-        public FileBrowser FileBrowser;
-        [Tooltip("谱面预览")]
+        [Tooltip("谱面预览（显示选中的社区关卡信息）")]
         public ChartPreview ChartPreview;
 
         private bool _isUpdating = false;
@@ -129,19 +127,14 @@ namespace RDOnline.ScnRoom
             int maxPlayers = (int)PlayerCountSlider.value;
             string password = PasswordInput.text.Trim();
 
-            // 检查是否有谱面更换
+            // 检查是否有谱面更换（用户新选了社区关卡时）
             string chartUrl = null;
             string chartName = null;
-            if (ChartPreview != null && !string.IsNullOrEmpty(ChartPreview.UploadedChartUrl))
+            if (ChartPreview != null && !string.IsNullOrEmpty(ChartPreview.UploadedChartUrl) &&
+                SelectedLevel.Current != null && !string.IsNullOrEmpty(SelectedLevel.ChartName))
             {
                 chartUrl = ChartPreview.UploadedChartUrl;
-                chartName = GetChartNameFromFile();
-
-                if (string.IsNullOrEmpty(chartName))
-                {
-                    ScrAlert.Show("无法读取谱面名称", true);
-                    return;
-                }
+                chartName = SelectedLevel.ChartName;
             }
 
             // 发送更新房间请求
@@ -161,39 +154,6 @@ namespace RDOnline.ScnRoom
             }
 
             return true;
-        }
-
-        /// <summary>
-        /// 从选中的文件中获取谱面名称
-        /// </summary>
-        private string GetChartNameFromFile()
-        {
-            try
-            {
-                if (FileBrowser == null || string.IsNullOrEmpty(FileBrowser.SelectedFilePath))
-                {
-                    Debug.LogError("[RoomUpdater] FileBrowser.SelectedFilePath 为空");
-                    return null;
-                }
-
-                string filePath = FileBrowser.SelectedFilePath;
-
-                if (!File.Exists(filePath))
-                {
-                    Debug.LogError($"[RoomUpdater] 文件不存在: {filePath}");
-                    return null;
-                }
-
-                // 获取文件名（不带扩展名）
-                string chartName = Path.GetFileNameWithoutExtension(filePath);
-                Debug.Log($"[RoomUpdater] 谱面名称: {chartName}");
-                return chartName;
-            }
-            catch (System.Exception e)
-            {
-                Debug.LogError($"[RoomUpdater] 读取谱面名称失败: {e.Message}");
-                return null;
-            }
         }
 
         /// <summary>

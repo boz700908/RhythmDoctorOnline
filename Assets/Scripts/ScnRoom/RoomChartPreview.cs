@@ -57,39 +57,28 @@ namespace RDOnline.ScnRoom
         }
 
         /// <summary>
-        /// 从下载目录加载谱面
+        /// 从下载目录加载谱面（默认使用找到的第一个 .rdlevel 文件）
         /// </summary>
         public void LoadChartFromDirectory()
         {
-            // 获取谱面目录
             if (ChartDownloader.Instance == null)
             {
                 Debug.LogError("[RoomChartPreview] ChartDownloader 实例不存在");
                 return;
             }
 
-            _chartDirectory = ChartDownloader.Instance.GetChartDirectory();
+            string chartRootDir = ChartDownloader.Instance.GetChartDirectory();
+            _chartFilePath = ChartDownloader.GetFirstRdlevelPath(chartRootDir);
 
-            // 获取谱面名称
-            if (RoomData.Instance == null || string.IsNullOrEmpty(RoomData.Instance.ChartName))
+            if (string.IsNullOrEmpty(_chartFilePath) || !File.Exists(_chartFilePath))
             {
-                Debug.LogError("[RoomChartPreview] RoomData 或谱面名称为空");
+                Debug.LogError($"[RoomChartPreview] 未找到 .rdlevel 谱面文件，目录: {chartRootDir}");
                 return;
             }
 
-            string chartName = RoomData.Instance.ChartName;
-            _chartFilePath = Path.Combine(_chartDirectory, chartName + ".adofai");
+            _chartDirectory = Path.GetDirectoryName(_chartFilePath);
+            Debug.Log($"[RoomChartPreview] 加载谱面: {_chartFilePath}");
 
-            // 检查文件是否存在
-            if (!File.Exists(_chartFilePath))
-            {
-                Debug.LogError($"[RoomChartPreview] 谱面文件不存在: {_chartFilePath}");
-                return;
-            }
-
-            Debug.Log($"[RoomChartPreview] 开始加载谱面: {_chartFilePath}");
-
-            // 读取并解析谱面文件
             string content = File.ReadAllText(_chartFilePath);
             ParseChartData(content);
         }
@@ -99,35 +88,33 @@ namespace RDOnline.ScnRoom
         /// </summary>
         private void ParseChartData(string content)
         {
-            // 使用正则表达式提取字段
+            // 正则匹配：rdlevel 与 adofai 字段名一致的有 song、author、previewImage；音频 rdlevel 用 previewSong，adofai 用 songFilename
             string songName = ExtractField(content, "song");
             string author = ExtractField(content, "author");
             string previewImage = ExtractField(content, "previewImage");
-            string songFilename = ExtractField(content, "songFilename");
+            string audioFile = ExtractField(content, "previewSong");
+            if (string.IsNullOrEmpty(audioFile))
+                audioFile = ExtractField(content, "songFilename");
 
-            // 去除HTML标签
             songName = RemoveHtmlTags(songName);
             author = RemoveHtmlTags(author);
 
             Debug.Log($"[RoomChartPreview] 谱面信息 - 名称: {songName}, 作者: {author}");
 
-            // 更新UI
             if (SongNameText != null)
                 SongNameText.text = songName;
             if (AuthorText != null)
                 AuthorText.text = author;
 
-            // 加载封面图片
             if (!string.IsNullOrEmpty(previewImage))
             {
                 string imagePath = Path.Combine(_chartDirectory, previewImage);
                 StartCoroutine(LoadCoverImage(imagePath));
             }
 
-            // 加载音乐文件
-            if (!string.IsNullOrEmpty(songFilename))
+            if (!string.IsNullOrEmpty(audioFile))
             {
-                string audioPath = Path.Combine(_chartDirectory, songFilename);
+                string audioPath = Path.Combine(_chartDirectory, audioFile);
                 StartCoroutine(LoadAudio(audioPath));
             }
         }

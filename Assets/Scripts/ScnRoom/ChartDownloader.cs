@@ -242,6 +242,25 @@ namespace RDOnline.ScnRoom
         }
 
         /// <summary>
+        /// 在目录下递归查找第一个 .rdlevel 文件，用于默认加载谱面
+        /// </summary>
+        public static string GetFirstRdlevelPath(string directory)
+        {
+            if (string.IsNullOrEmpty(directory) || !Directory.Exists(directory))
+                return null;
+            try
+            {
+                foreach (string path in Directory.GetFiles(directory, "*.rdlevel", SearchOption.AllDirectories))
+                    return path;
+            }
+            catch (Exception e)
+            {
+                UnityEngine.Debug.LogError($"[ChartDownloader] 查找 .rdlevel 失败: {e.Message}");
+            }
+            return null;
+        }
+
+        /// <summary>
         /// 是否正在下载
         /// </summary>
         public bool IsDownloading()
