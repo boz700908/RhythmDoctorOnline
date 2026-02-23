@@ -1,11 +1,14 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
+using System.Threading;
 using HarmonyLib;
 using UnityEngine;
 using UnityEngine.UI;
+using Debug = UnityEngine.Debug;
 using Object = UnityEngine.Object;
 #pragma warning disable 0455
 namespace ModEntry
@@ -19,6 +22,7 @@ namespace ModEntry
         {
             public static void Prefix(scnMenu __instance)
             {
+                scnBase.currentLevelSelect = "scnMenu";
                 RectTransform optionsContainer = __instance.optionsContainer;
                 if (optionsContainer != null)
                 {
@@ -89,9 +93,11 @@ namespace ModEntry
             }
         }
 
-        [HarmonyPatch(typeof(scnBase), "GoToScene")]
+        
+        //[HarmonyPatch(typeof(scnBase), "GoToScene")]
         static class scnBase_GoToScene_Patch
         {
+            static MethodInfo targetMethod = typeof(AudioManager).GetMethod("DestroyAllAudioSources");
             public static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions,
                 ILGenerator generator)
             {
@@ -129,21 +135,37 @@ namespace ModEntry
                 for (int i = 0; i < codes.Count - 1; i++)
                 {
                     // 查找 callvirt instance void AudioManager::DestroyAllAudioSources() 指令
-                    if (codes[i].opcode == OpCodes.Callvirt && 
-                        codes[i].operand.ToString().Contains("DestroyAllAudioSources"))
+                    if (codes[i].opcode == OpCodes.Callvirt)
                     {
-                        // 移除前一条指令 (get_Instance() 调用)
-                        if (i > 0 && codes[i - 1].opcode == OpCodes.Call)
+                        // 更安全的方法：检查操作数是否为 MethodInfo 并匹配方法名
+                        if (codes[i].operand is MethodInfo methodInfo)
                         {
-                            codes.RemoveAt(i - 1);
-                            codes.RemoveAt(i - 1); // 因为删除了一个元素，索引需要调整
-                            break;
+                            if (methodInfo == targetMethod)
+                            {
+                                // 移除前一条指令 (get_Instance() 调用)
+                                if (i > 0 && codes[i - 1].opcode == OpCodes.Call)
+                                {
+                                    codes.RemoveAt(i - 1);
+                                    codes.RemoveAt(i - 1); // 因为删除了一个元素，索引需要调整
+                                    break;
+                                }
+                            }
                         }
                     }
                 }
-                
                 return codes.AsEnumerable();
             }
+        }
+
+        [HarmonyPatch(typeof(AudioManager), "DestroyAllAudioSources")]
+        static class AudioManager_DestroyAllAudioSources_Patch
+        {
+             static bool Prefix(scnMenu __instance)
+             {
+                 bool isGoToScene = scnBase.currentLevelSelect == "ScnRoom";
+                 Debug.Log(isGoToScene);
+                 return !isGoToScene;
+             }
         }
     }
 #endif
