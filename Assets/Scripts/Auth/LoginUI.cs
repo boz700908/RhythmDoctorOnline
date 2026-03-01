@@ -1,4 +1,9 @@
+using System;
+using System.Collections;
+using System.IO;
+using System.Text;
 using UnityEngine;
+using UnityEngine.Networking;
 using UnityEngine.UI;
 using TMPro;
 using DG.Tweening;
@@ -36,11 +41,19 @@ namespace RDOnline.Auth
         [Header("注册面板引用")]
         public RegisterUI RegisterPanel;
 
+        [Header("版本检查（与检查更新一致，版本落后时禁用登录）")]
+        [Tooltip("true=开发环境，false=生产环境")]
+        public bool VersionCheckIsDev = false;
+        public string VersionCheckDevURL = "http://localhost:3004";
+        public string VersionCheckProdURL = "https://rdonlineapi.rhythmdoctor.top";
+        private string VersionCheckBaseURL => VersionCheckIsDev ? VersionCheckDevURL : VersionCheckProdURL;
+
         [Header("动画设置")]
         public float AnimDuration = 0.3f;
         public float MoveOffset = 50f;
 
         private Vector2 _originPos;
+        private bool _versionOutdated;
 
         private const string KEY_REMEMBER = "login_remember";
         private const string KEY_USERNAME = "login_username";
@@ -69,7 +82,9 @@ namespace RDOnline.Auth
                 ShowMessage("正在连接服务器...");
                 WebSocketManager.Instance.Connect();
             }
-            Debug.Log("HotPut!!!yesyesyesyes");
+
+            // 版本检查：若服务器版本高于本地则禁用登录按钮
+            StartCoroutine(CheckVersionAndUpdateLoginButton());
         }
 
         private void OnDestroy()
@@ -120,8 +135,108 @@ namespace RDOnline.Auth
             ShowMessage($"连接失败: {error}");
         }
 
+        /// <summary>
+        /// 检查服务器版本与本地版本，若服务器版本更高则禁用登录按钮。
+        /// </summary>
+        private IEnumerator CheckVersionAndUpdateLoginButton()
+        {
+            string platform = GetPlatformParam();
+            if (string.IsNullOrEmpty(platform))
+                yield break;
+
+            string url = $"{VersionCheckBaseURL.TrimEnd('/')}/checkupdate?platform={platform}";
+            using (UnityWebRequest req = UnityWebRequest.Get(url))
+            {
+                yield return req.SendWebRequest();
+                if (req.result != UnityWebRequest.Result.Success)
+                    yield break;
+
+                string serverVersion;
+                try
+                {
+                    var jo = JObject.Parse(req.downloadHandler.text);
+                    serverVersion = jo["version"]?.ToString();
+                }
+                catch
+                {
+                    yield break;
+                }
+                if (string.IsNullOrEmpty(serverVersion))
+                    yield break;
+
+                string localVersion = LoadLocalVersionForLogin();
+                if (CompareVersion(serverVersion, localVersion ?? "0.0.0") > 0)
+                {
+                    _versionOutdated = true;
+                    if (BtnLogin != null)
+                        BtnLogin.interactable = false;
+                    ShowMessage("请前往官网更新最新版本后登录");
+                }
+            }
+        }
+
+        private static string GetPlatformParam()
+        {
+            switch (Application.platform)
+            {
+                case RuntimePlatform.Android: return "android";
+                case RuntimePlatform.IPhonePlayer: return "ios";
+                case RuntimePlatform.WindowsPlayer:
+                case RuntimePlatform.WindowsEditor: return "win";
+                default: return null;
+            }
+        }
+
+        private static string LoadLocalVersionForLogin()
+        {
+            try
+            {
+                string dir = BepInModEntry.modPath;
+                if (string.IsNullOrEmpty(dir)) return null;
+                string path = Path.Combine(dir, "CacheAssets", "info.json");
+                if (!File.Exists(path)) return null;
+                string json = File.ReadAllText(path, Encoding.UTF8);
+                var jo = JObject.Parse(json);
+                return jo["version"]?.ToString();
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        private static int CompareVersion(string a, string b)
+        {
+            int[] pa = ParseVersion(a);
+            int[] pb = ParseVersion(b);
+            int len = Math.Max(pa.Length, pb.Length);
+            for (int i = 0; i < len; i++)
+            {
+                int va = i < pa.Length ? pa[i] : 0;
+                int vb = i < pb.Length ? pb[i] : 0;
+                if (va != vb) return va.CompareTo(vb);
+            }
+            return 0;
+        }
+
+        private static int[] ParseVersion(string v)
+        {
+            if (string.IsNullOrEmpty(v)) return new[] { 0 };
+            string[] parts = v.Split('.');
+            var result = new int[parts.Length];
+            for (int i = 0; i < parts.Length; i++)
+                int.TryParse(parts[i], out result[i]);
+            return result;
+        }
+
         private void OnLoginClick()
         {
+            if (_versionOutdated)
+            {
+                ShowMessage("请前往官网更新最新版本后登录");
+                return;
+            }
+
             var username = InputUsername.text.Trim();
             var password = InputPassword.text;
 

@@ -72,6 +72,7 @@ ThunderKit/
 .Trashes
 ehthumbs.db
 Thumbs.db
-
+*.assets
 /RDOL
 /AssetBundles
+**/StreamingAssets/**

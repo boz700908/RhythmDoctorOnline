@@ -103,9 +103,9 @@ public class ScnCheckUpdate : MonoBehaviour
         Debug.Log("try load" + new StackTrace());
         LoadAssemblyAndMetadata();
         scenesBundle = AssetBundle.LoadFromFile(Path.Combine(BepInModEntry.modPath,"CacheAssets","rdol.scenes.assets"));
-        resourcesBundle = AssetBundle.LoadFromFile(Path.Combine(BepInModEntry.modPath,"CacheAssets","rdol.resources.assets"));
-        
-        Debug.Log("assetbundle loaded");
+        var array = Directory.GetFiles(Path.Combine(BepInModEntry.modPath,"CacheAssets"), "*.assets").ToList()
+            .Where(a => a.StartsWith("rdol.resources")).Select(AssetBundle.LoadFromFile).ToArray();
+        if (array.Length > 0) Debug.Log("assetbundle loaded");
     }
 
     public void LoadAssemblyAndMetadata()
@@ -195,9 +195,13 @@ public class ScnCheckUpdate : MonoBehaviour
 
             if (needUpdate)
             {
-                // 版本号有更新：需要下载所有云端文件
-                SetStep("发现新版本，准备下载...");
-                filesToDownload.AddRange(updateInfo.files);
+                // 版本号有更新：不在此处下载，提示用户前往官网更新，禁止进入游戏
+                SetTitle("发现新版本");
+                SetStep("检测到新版本，请前往官网下载更新后即可进入游戏。");
+                SetProgress(1f);
+                SetProgressText("100%");
+                OnCheckComplete(success: false, requireFullUpdateFromWebsite: true);
+                yield break;
             }
             else
             {
@@ -307,7 +311,7 @@ public class ScnCheckUpdate : MonoBehaviour
             LoadAssetBundles();
             yield return null;
 
-            OnCheckComplete(success: true);
+            OnCheckComplete(success: true, requireFullUpdateFromWebsite: false);
         }
     }
 
@@ -443,8 +447,22 @@ public class ScnCheckUpdate : MonoBehaviour
         }
     }
 
-    private void OnCheckComplete(bool success)
+    private void OnCheckComplete(bool success, bool requireFullUpdateFromWebsite = false)
     {
+        if (requireFullUpdateFromWebsite)
+        {
+            // 版本落后：保持检查更新面板显示，不显示进入游戏按钮
+            SetTitle("发现新版本");
+            SetStep("检测到新版本，请前往官网下载更新后即可进入游戏。");
+            if (enterGamePanel != null)
+            {
+                enterGamePanel.alpha = 0;
+                enterGamePanel.blocksRaycasts = false;
+                enterGamePanel.interactable = false;
+            }
+            return;
+        }
+
         if (success)
         {
             SetTitle("欢迎来到RD Online");

@@ -12,9 +12,9 @@ namespace RDOnline.Utils
         public static AssetBundleManager instance = new();
         
         public AssetBundle sceneBundle;        
-        public AssetBundle resourcesBundle;
+        public AssetBundle[] resourcesBundles;
         
-        private readonly string LoadPath = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
+        private readonly string LoadPath = Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location),"CacheAssets");
         private AssetBundleManager()
         {
             try
@@ -23,17 +23,18 @@ namespace RDOnline.Utils
                 sceneBundle = AssetBundle.GetAllLoadedAssetBundles()
                     .ToArray()
                     .First(a => a.name.Contains("rdol.scenes"));
-                resourcesBundle = AssetBundle.GetAllLoadedAssetBundles()
+                resourcesBundles = AssetBundle.GetAllLoadedAssetBundles()
                     .ToArray()
-                    .First(a => a.name.Contains("rdol.resources"));
+                    .Where(a => a.name.Contains("rdol.resources")).ToArray();
             
                 if (sceneBundle == null)
                 {
                     sceneBundle = AssetBundle.LoadFromFile(Path.Combine(LoadPath, "rdol.scenes.assets"));
                 }
-                if (resourcesBundle == null)
+                if (resourcesBundles == null)
                 {
-                    resourcesBundle = AssetBundle.LoadFromFile(Path.Combine(LoadPath, "rdol.resources.assets"));
+                    resourcesBundles = Directory.GetFiles(LoadPath, "*.assets").ToList()
+                        .Where(a => a.StartsWith("rdol.resources")).Select(AssetBundle.LoadFromFile).ToArray();
                 }
             }
             catch (Exception e)
@@ -41,18 +42,27 @@ namespace RDOnline.Utils
                 Debug.Log(e);
             }
         }
+
+        public static bool DryLoad()
+        {
+            var tips = instance.LoadAsset<TextAsset>("tips.json");
+            return tips != null;
+        }
         
         public T LoadAsset<T>(string pathOrName) where T : UnityEngine.Object
         {
             T result = Resources.Load<T>(pathOrName);
             if (result != null) return result;
-            result = resourcesBundle.LoadAsset<T>(pathOrName);
-            if (result == null)
+            foreach (var resourcesBundle in resourcesBundles)
             {
-                result = resourcesBundle.LoadAsset<T>(resourcesBundle.GetAllAssetNames().First(a => a.Contains(pathOrName)));
+                result = resourcesBundle.LoadAsset<T>(pathOrName);
+                if (result == null)
+                {
+                    result = resourcesBundle.LoadAsset<T>(resourcesBundle.GetAllAssetNames().First(a => a.Contains(pathOrName)));
+                }
+                if (result != null) return result;
             }
             return result;
         }
-
     }
 }
