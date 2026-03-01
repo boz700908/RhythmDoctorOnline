@@ -13,6 +13,7 @@ using UnityEngine.UI;
 using TMPro;
 using DG.Tweening;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using Debug = UnityEngine.Debug;
 
 /// <summary>
@@ -153,7 +154,7 @@ public class ScnCheckUpdate : MonoBehaviour
             UpdateInfo updateInfo;
             try
             {
-                updateInfo = JsonConvert.DeserializeObject<UpdateInfo>(json);
+                updateInfo = ParseUpdateInfo(json);
             }
             catch (Exception e)
             {
@@ -386,7 +387,25 @@ public class ScnCheckUpdate : MonoBehaviour
         return $"{FormatSize((long)bytesPerSecond)}/s";
     }
 
-    private LocalInfo LoadLocalInfo()
+    /// <summary>
+        /// 解析更新接口 JSON，兼容 "files" 与 "downloadFileInfos" 两种字段名。
+        /// </summary>
+        private static UpdateInfo ParseUpdateInfo(string json)
+        {
+            var jo = JObject.Parse(json);
+            var info = new UpdateInfo
+            {
+                version = jo["version"]?.ToString(),
+                announcement = jo["announcement"]?.ToString()
+            };
+            JToken arr = jo["files"] ?? jo["downloadFileInfos"];
+            info.files = arr != null && arr is JArray jarr
+                ? jarr.ToObject<FileInfo[]>()
+                : new FileInfo[0];
+            return info;
+        }
+
+        private LocalInfo LoadLocalInfo()
     {
         try
         {
