@@ -46,6 +46,8 @@ namespace RDOnline.Auth
         public bool VersionCheckIsDev = false;
         public string VersionCheckDevURL = "http://localhost:3004";
         public string VersionCheckProdURL = "https://rdonlineapi.rhythmdoctor.top";
+        [Tooltip("客户端内置版本号，与 ScnCheckUpdate.BuiltInVersion 保持一致；服务器版本高于此值则禁用登录")]
+        public string VersionCheckBuiltInVersion = "2.0.0";
         private string VersionCheckBaseURL => VersionCheckIsDev ? VersionCheckDevURL : VersionCheckProdURL;
 
         [Header("动画设置")]
@@ -164,8 +166,8 @@ namespace RDOnline.Auth
                 if (string.IsNullOrEmpty(serverVersion))
                     yield break;
 
-                string localVersion = LoadLocalVersionForLogin();
-                if (CompareVersion(serverVersion, localVersion ?? "0.0.0") > 0)
+                string builtInVersion = VersionCheckBuiltInVersion ?? "0.0.0";
+                if (CompareVersion(serverVersion, builtInVersion) > 0)
                 {
                     _versionOutdated = true;
                     if (BtnLogin != null)
@@ -184,24 +186,6 @@ namespace RDOnline.Auth
                 case RuntimePlatform.WindowsPlayer:
                 case RuntimePlatform.WindowsEditor: return "win";
                 default: return null;
-            }
-        }
-
-        private static string LoadLocalVersionForLogin()
-        {
-            try
-            {
-                string dir = BepInModEntry.modPath;
-                if (string.IsNullOrEmpty(dir)) return null;
-                string path = Path.Combine(dir, "CacheAssets", "info.json");
-                if (!File.Exists(path)) return null;
-                string json = File.ReadAllText(path, Encoding.UTF8);
-                var jo = JObject.Parse(json);
-                return jo["version"]?.ToString();
-            }
-            catch
-            {
-                return null;
             }
         }
 

@@ -29,6 +29,10 @@ public class ScnCheckUpdate : MonoBehaviour
     /// <summary>当前使用的服务器 URL（由 IsDev 决定）</summary>
     private string ServerURL => IsDev ? DevServerURL : ProdServerURL;
 
+    [Header("内置版本")]
+    [Tooltip("当前客户端内置版本号，用于与服务器比较；服务器版本高于此值则提示前往官网更新")]
+    public string BuiltInVersion = "2.0.0";
+
     [Header("检查更新面板")]
     [SerializeField] private CanvasGroup checkUpdatePanel;
     [SerializeField] private RectTransform progressBarImage;
@@ -188,9 +192,8 @@ public class ScnCheckUpdate : MonoBehaviour
 
             updateInfo.files = updateInfo.files ?? new FileInfo[0];
 
-            // 读取本地版本
-            LocalInfo localInfo = LoadLocalInfo();
-            bool needUpdate = CompareVersion(updateInfo.version, localInfo?.version ?? "0.0.0") > 0;
+            // 用内置版本号与服务器比较（不再从 info.json 扫描）
+            bool needUpdate = CompareVersion(updateInfo.version, BuiltInVersion ?? "0.0.0") > 0;
 
             List<FileInfo> filesToDownload = new List<FileInfo>();
 
