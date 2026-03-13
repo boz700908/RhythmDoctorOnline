@@ -97,18 +97,27 @@ namespace FileDialog
         /// <inheritdoc />
         public string OpenFile(string title, string basePath, OpenFileFilter filter)
         {
-            var ofn = new OPENFILENAME
+            string originalDirectory = Directory.GetCurrentDirectory();
+            try
             {
-                lStructSize = Marshal.SizeOf<OPENFILENAME>(),
-                lpstrFile = new string('\0', 2048),
-                nMaxFile = 2048,
-                lpstrInitialDir = basePath,
-                lpstrTitle = title,
-                Flags = OFN_EXPLORER | OFN_FILEMUSTEXIST | OFN_PATHMUSTEXIST,
-                lpstrFilter = BuildOpenFilter(filter)
-            };
+                var ofn = new OPENFILENAME
+                {
+                    lStructSize = Marshal.SizeOf<OPENFILENAME>(),
+                    lpstrFile = new string('\0', 2048),
+                    nMaxFile = 2048,
+                    lpstrInitialDir = basePath,
+                    lpstrTitle = title,
+                    Flags = OFN_EXPLORER | OFN_FILEMUSTEXIST | OFN_PATHMUSTEXIST,
+                    lpstrFilter = BuildOpenFilter(filter)
+                };
 
-            return GetOpenFileNameW(ref ofn) ? ofn.lpstrFile.Split('\0')[0] : null;
+                return GetOpenFileNameW(ref ofn) ? ofn.lpstrFile.Split('\0')[0] : null;
+            }
+            finally
+            {
+                if (Directory.Exists(originalDirectory))
+                    Directory.SetCurrentDirectory(originalDirectory);
+            }
         }
 
         /// <inheritdoc />
@@ -116,67 +125,77 @@ namespace FileDialog
         {
             // 保存文件时强制禁用 "All Files" 选项
             filter.IncludeAllFiles = false;
-        
-            var ofn = new OPENFILENAME
-            {
-                lStructSize = Marshal.SizeOf<OPENFILENAME>(),
-                lpstrFile = string.IsNullOrEmpty(defaultName) 
-                    ? new string('\0', 2048) 
-                    : defaultName + new string('\0', 2048 - defaultName.Length),
-                nMaxFile = 2048,
-                lpstrInitialDir = basePath,
-                lpstrTitle = title,
-                Flags = OFN_EXPLORER | OFN_PATHMUSTEXIST | OFN_OVERWRITEPROMPT,
-                lpstrFilter = BuildSaveFilter(filter),
-                nFilterIndex = 1
-            };
 
-            if (!GetSaveFileNameW(ref ofn))
-                return null;
-
-            var result = ofn.lpstrFile.Split('\0')[0];
-        
-            // 自动附加后缀
-            if (filter.Filter != null && filter.Filter.Count > 0)
+            string originalDirectory = Directory.GetCurrentDirectory();
+            try
             {
-                // 获取选中的过滤器索引（从1开始）
-                var selectedIndex = ofn.nFilterIndex - 1;
-                var filterList = filter.Filter.ToList();
-            
-                if (selectedIndex >= 0 && selectedIndex < filterList.Count)
+                var ofn = new OPENFILENAME
                 {
-                    var selectedExt = filterList[selectedIndex].Value;
-                    var extension = selectedExt.StartsWith("*.") ? selectedExt.Substring(2) : selectedExt.TrimStart('.');
-                
-                    // 检查文件是否已有扩展名
-                    if (!string.IsNullOrEmpty(extension) && !result.EndsWith("." + extension, StringComparison.OrdinalIgnoreCase))
+                    lStructSize = Marshal.SizeOf<OPENFILENAME>(),
+                    lpstrFile = string.IsNullOrEmpty(defaultName)
+                        ? new string('\0', 2048)
+                        : defaultName + new string('\0', 2048 - defaultName.Length),
+                    nMaxFile = 2048,
+                    lpstrInitialDir = basePath,
+                    lpstrTitle = title,
+                    Flags = OFN_EXPLORER | OFN_PATHMUSTEXIST | OFN_OVERWRITEPROMPT,
+                    lpstrFilter = BuildSaveFilter(filter),
+                    nFilterIndex = 1
+                };
+
+                if (!GetSaveFileNameW(ref ofn))
+                    return null;
+
+                var result = ofn.lpstrFile.Split('\0')[0];
+
+                // 自动附加后缀
+                if (filter.Filter != null && filter.Filter.Count > 0)
+                {
+                    // 获取选中的过滤器索引（从1开始）
+                    var selectedIndex = ofn.nFilterIndex - 1;
+                    var filterList = filter.Filter.ToList();
+
+                    if (selectedIndex >= 0 && selectedIndex < filterList.Count)
                     {
-                        result += "." + extension;
+                        var selectedExt = filterList[selectedIndex].Value;
+                        var extension = selectedExt.StartsWith("*.") ? selectedExt.Substring(2) : selectedExt.TrimStart('.');
+
+                        // 检查文件是否已有扩展名
+                        if (!string.IsNullOrEmpty(extension) && !result.EndsWith("." + extension, StringComparison.OrdinalIgnoreCase))
+                        {
+                            result += "." + extension;
+                        }
                     }
                 }
+
+                return result;
             }
-        
-            return result;
+            finally
+            {
+                if (Directory.Exists(originalDirectory))
+                    Directory.SetCurrentDirectory(originalDirectory);
+            }
         }
 
         /// <inheritdoc />
         public string OpenFolder(string title, string basePath)
         {
+            string originalDirectory = Directory.GetCurrentDirectory();
             try
             {
                 var dialog = (IFileOpenDialog)new FileOpenDialog();
                 dialog.SetOptions(FOS_PICKFOLDERS | FOS_FORCEFILESYSTEM);
-            
+
                 if (!string.IsNullOrEmpty(title))
                     dialog.SetTitle(title);
-            
+
                 if (!string.IsNullOrEmpty(basePath) && Directory.Exists(basePath))
                 {
                     var guid = new Guid("43826D1E-E718-42EE-BC55-A1E261C37BFE");
                     if (SHCreateItemFromParsingName(basePath, IntPtr.Zero, guid, out var shellItem) == 0)
                         dialog.SetFolder(shellItem);
                 }
-            
+
                 if (dialog.Show(IntPtr.Zero) == 0)
                 {
                     dialog.GetResult(out var item);
@@ -187,6 +206,11 @@ namespace FileDialog
                 }
             }
             catch { }
+            finally
+            {
+                if (Directory.Exists(originalDirectory))
+                    Directory.SetCurrentDirectory(originalDirectory);
+            }
 
             return null;
         }

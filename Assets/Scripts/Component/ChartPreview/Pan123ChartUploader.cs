@@ -251,9 +251,16 @@ namespace RDOnline.Component
                                 continue;
                             }
                             string body = req.downloadHandler.text;
-                            if (ParseJsonInt(body, "code") != 0)
+                            int code = ParseJsonInt(body, "code");
+                            if (code != 0)
                             {
                                 string msg = ParseJsonString(body, "message");
+                                // 如果是文件校验中的临时状态，继续轮询而不是失败
+                                if (msg != null && msg.Contains("校验"))
+                                {
+                                    requestOk = true;
+                                    break;
+                                }
                                 onError?.Invoke(string.IsNullOrEmpty(msg) ? "上传完毕失败" : msg);
                                 yield break;
                             }
@@ -262,7 +269,6 @@ namespace RDOnline.Component
                             requestOk = true;
                             if (completed && fileId > 0)
                                 break;
-                            break;
                         }
                     }
                     if (!requestOk)
