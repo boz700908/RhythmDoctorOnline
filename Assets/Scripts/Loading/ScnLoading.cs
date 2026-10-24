@@ -140,7 +140,10 @@ public class ScnLoading : MonoBehaviour
         {
             tipText.text = ScrTips.GetFormattedTips();
         }
-        
+
+        // 加载界面没有可操作的东西，屏幕上写着的提示直接读出来，不占焦点
+        SayLoadingTip();
+
         // 等待一帧确保界面完全激活
         yield return null;
         
@@ -240,8 +243,31 @@ public class ScnLoading : MonoBehaviour
         {
             int percentage = Mathf.RoundToInt(progress * 100);
             progressText.text = percentage + "%";
+
+            // 每 25% 报一次，够听出在动，又不至于每帧开口打断提示
+            int step = percentage / 25;
+            if (step != _lastAnnouncedStep && percentage > 0)
+            {
+                _lastAnnouncedStep = step;
+                RDOnline.A11y.A11yNavigator.SayInfo(
+                    RDOnline.A11y.A11yPhrases.Text("加载中", "Loading") + " " + percentage + "%",
+                    NarrationCategory.Notification);
+            }
         }
     }
+
+    /// <summary>把屏幕上的加载提示读出来。加载界面无焦点可言，读即可。</summary>
+    void SayLoadingTip()
+    {
+        _lastAnnouncedStep = -1;
+        if (tipText == null || string.IsNullOrEmpty(tipText.text)) return;
+
+        RDOnline.A11y.A11yNavigator.SayInfo(
+            RDOnline.A11y.A11yPhrases.Text("加载中", "Loading") + " " + tipText.text,
+            NarrationCategory.Notification);
+    }
+
+    private int _lastAnnouncedStep = -1;
     
     /// <summary>
     /// 显示加载动画协程（不加载场景）
@@ -255,7 +281,9 @@ public class ScnLoading : MonoBehaviour
         {
             tipText.text = string.IsNullOrEmpty(tipMessage) ? ScrTips.GetFormattedTips() : tipMessage;
         }
-        
+
+        SayLoadingTip();
+
         // 重置进度条
         UpdateLoadingUI(0f);
         
@@ -317,7 +345,9 @@ public class ScnLoading : MonoBehaviour
         {
             tipText.text = string.IsNullOrEmpty(tipMessage) ? ScrTips.GetFormattedTips() : tipMessage;
         }
-        
+
+        SayLoadingTip();
+
         // 等待一帧确保界面完全激活
         yield return null;
         

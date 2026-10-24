@@ -1,0 +1,6 @@
+{
+  "apiBase": "http://47.238.109.184:3004",
+  "wsUrl": "ws://47.238.109.184:3005",
+  "versionCheckUrl": "http://47.238.109.184:3004",
+  "chartUploadUrl": "http://47.238.109.184:3004/charts/upload"
+}

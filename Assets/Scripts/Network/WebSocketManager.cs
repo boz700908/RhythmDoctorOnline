@@ -72,7 +72,7 @@ namespace RDOnline.Network
                 return;
             }
 
-            url ??= $"ws://{GameConfig.Instance.ServerUrl}";
+            url ??= ModConfig.WsUrl;
             _ws = new WebSocket(url);
 
             _ws.OnOpen += () =>

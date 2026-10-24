@@ -17,6 +17,14 @@ namespace ModEntry
     public class Patches
     {
         private const string modName = "RDOL";
+
+        /// <summary>
+        /// 主菜单入口的显示文字。不做新的本地化资源，跟随游戏当前语言：
+        /// 中文用中文，其他语言用英文，避免出现中文夹杂在拉丁字体里。
+        /// 显示与朗读取同一段文字，所以读出来的就是看到的。
+        /// </summary>
+        private static string ModLabel => RDString.isChinese ? "多人游戏" : "Multiplayer";
+
         [HarmonyPatch(typeof(scnMenu), "Awake")]
         public class Patch_scnMenu_Start
         {
@@ -24,41 +32,49 @@ namespace ModEntry
             {
                 scnBase.currentLevelSelect = "scnMenu";
                 RectTransform optionsContainer = __instance.optionsContainer;
-                if (optionsContainer != null)
+                if (optionsContainer == null) return;
+
+                try
                 {
-                    try
-                    {
-                        Transform val = optionsContainer.Find("customLevels");
-                        GameObject val2 = Object.Instantiate(val.gameObject);
-                        val2.transform.SetParent(optionsContainer.transform, false);
-                        val2.transform.SetSiblingIndex(val.GetSiblingIndex() + 1);
-                        val2.name = modName;
-                        val2.gameObject.SetActive(true);
-                    }
-                    catch (Exception ex)
-                    {
-                        Debug.Log(ex);
-                    }
+                    // 已经加过就不再克隆，避免 Awake 被再次调用时重复添加
+                    if (optionsContainer.Find(modName) != null) return;
+
+                    Transform source = optionsContainer.Find("customLevels");
+                    if (source == null) return;
+
+                    GameObject clone = Object.Instantiate(source.gameObject);
+                    clone.transform.SetParent(optionsContainer.transform, false);
+                    clone.transform.SetSiblingIndex(source.GetSiblingIndex() + 1);
+                    clone.name = modName;
+                    clone.SetActive(true);
+                }
+                catch (Exception ex)
+                {
+                    Debug.Log("[RDOL] 主菜单入口创建失败: " + ex);
                 }
             }
 
             public static void Postfix(scnMenu __instance)
             {
                 RectTransform options = __instance.options;
-                if (options != null)
-                {
-                    Transform val = __instance.optionsContainer.Find(modName);
-                    if (val != null)
-                    {
-                        Rect rect = val.GetComponent<RectTransform>().rect;
-                        float height = rect.height;
-                        RectTransform component = options.GetComponent<RectTransform>();
-                        component.position = new Vector2(component.position.x, component.position.y + height / 1.5f);
-                    }
-                }
+                if (options == null) return;
+
+                Transform entry = __instance.optionsContainer != null
+                    ? __instance.optionsContainer.Find(modName)
+                    : null;
+                if (entry == null) return;
+
+                // 多出来的这一项要把选项整体上移，否则会顶出可视区
+                Rect rect = entry.GetComponent<RectTransform>().rect;
+                RectTransform component = options.GetComponent<RectTransform>();
+                component.position = new Vector2(component.position.x, component.position.y + rect.height / 1.5f);
             }
         }
 
+        /// <summary>
+        /// 主菜单的选项文字由 Localize() 通过 RDString.Get("mainMenu." + name) 取得，
+        /// 我们的克隆项名字是 RDOL，所以在这里给出文字。
+        /// </summary>
         [HarmonyPatch(typeof(RDString), "GetWithCheck")]
         public static class RDString_GetWithCheck
         {
@@ -66,7 +82,7 @@ namespace ModEntry
             {
                 if (key == "mainMenu." + modName)
                 {
-                    __result = "多人游戏";
+                    __result = ModLabel;
                     exists = true;
                     return false;
                 }
@@ -75,26 +91,47 @@ namespace ModEntry
             }
         }
 
+        /// <summary>
+        /// 原版 SelectOption 的 switch 里没有 RDOL 分支，命中时原方法会继续往下走。
+        /// 这里改成返回 false，由补丁自己完成跳转。
+        /// </summary>
         [HarmonyPatch(typeof(scnMenu), "SelectOption")]
         public static class scnMenu_SelectOption
         {
-            private static void Prefix(scnMenu __instance)
+            private static readonly FieldInfo CurrentOptionField =
+                typeof(scnMenu).GetField("currentOption", BindingFlags.Instance | BindingFlags.NonPublic);
+            private static readonly FieldInfo OptionsTextField =
+                typeof(scnMenu).GetField("optionsText", BindingFlags.Instance | BindingFlags.NonPublic);
+            private static readonly MethodInfo TransitionMethod =
+                typeof(scnMenu).GetMethod("TransitionToScene", BindingFlags.Instance | BindingFlags.NonPublic);
+            private static readonly MethodInfo ConfirmSoundMethod =
+                typeof(scnMenu).GetMethod("PlayConfirmSound", BindingFlags.Instance | BindingFlags.NonPublic);
+
+            private static bool Prefix(scnMenu __instance)
             {
-                int num = (int)__instance.GetType()
-                    .GetField("currentOption", BindingFlags.Instance | BindingFlags.NonPublic)
-                    .GetValue(__instance);
-                if ((__instance.GetType()
-                        .GetField("optionsText", BindingFlags.Instance | BindingFlags.NonPublic)
-                        .GetValue(__instance) as Text[])[num].gameObject.name == modName)
+                object rawIndex = CurrentOptionField != null ? CurrentOptionField.GetValue(__instance) : null;
+                if (!(rawIndex is int)) return true;
+                int index = (int)rawIndex;
+
+                Text[] texts = OptionsTextField != null ? OptionsTextField.GetValue(__instance) as Text[] : null;
+                if (texts == null || index < 0 || index >= texts.Length) return true;
+
+                Text current = texts[index];
+                if (current == null || current.gameObject.name != modName) return true;
+
+                try
                 {
-                    __instance.conductor.StopSong();
-                    typeof(scnMenu).GetMethod("TransitionToScene", BindingFlags.Instance | BindingFlags.NonPublic).Invoke(__instance, new object[1] { "scnCheckUpdate" });
+                    ConfirmSoundMethod?.Invoke(__instance, null);
                 }
+                catch (Exception) { }
+
+                __instance.conductor.StopSong();
+                TransitionMethod?.Invoke(__instance, new object[] { "scnCheckUpdate" });
+                return false;
             }
         }
 
         
-        //[HarmonyPatch(typeof(scnBase), "GoToScene")]
         static class scnBase_GoToScene_Patch
         {
             static MethodInfo targetMethod = typeof(AudioManager).GetMethod("DestroyAllAudioSources");

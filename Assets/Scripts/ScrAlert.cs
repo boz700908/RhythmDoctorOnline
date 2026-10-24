@@ -58,6 +58,12 @@ public class ScrAlert : MonoBehaviour
         if (messageText != null)
             messageText.text = message;
 
+        // 提示只显示两秒，看屏幕的人一眼就看到，听的人必须同时被念到，
+        // 否则创建失败、房间已满、密码错误这些结果全都无从得知。
+        // 它自己会消失，所以不进导航清单，只读一遍。
+        if (!string.IsNullOrEmpty(message))
+            RDOnline.A11y.A11yNavigator.SayInfo(message, NarrationCategory.Notification);
+
         if (autoHideCoroutine != null)
             StopCoroutine(autoHideCoroutine);
 

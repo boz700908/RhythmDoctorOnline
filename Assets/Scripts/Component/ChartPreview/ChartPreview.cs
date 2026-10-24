@@ -46,7 +46,7 @@ namespace RDOnline.Component
         public float RotationSpeed = 30f;
 
         [Header("上传结果")]
-        [Tooltip("上传成功后的谱面URL")]
+        [Tooltip("上传成功后的谱面URL（官方谱面为 internal://关卡名）")]
         public string UploadedChartUrl;
 
         private string _currentChartPath;
@@ -57,11 +57,27 @@ namespace RDOnline.Component
         private Coroutine _loadCoverUrlCoroutine;
         private bool _previewFromLocalFile;
         private string _currentChartName;
+        /// <summary>官方关卡的内部枚举名（如 OrientalTechno）。只用于传输，永不显示。</summary>
+        private string _officialLevelName;
+        private bool _isOfficialLevel;
+
+        /// <summary>从谱面文件解析出的元数据，上传成功后作为发布信息提交给社区库</summary>
 
         /// <summary>
         /// 当前谱面名称（本地文件加载时由解析得到，供创建房间等使用）
         /// </summary>
         public string CurrentChartName => _currentChartName;
+
+        /// <summary>
+        /// 当前选的是否为官方关卡（官方关卡不打包不进游戏目录，各端本地加载）
+        /// </summary>
+        public bool IsOfficialLevel => _isOfficialLevel;
+
+        /// <summary>
+        /// 当前所选官方关卡的内部枚举名；非官方关卡返回 null。
+        /// 显示一律用 CurrentChartName（本地化名称），这个只给网络传输用。
+        /// </summary>
+        public string OfficialLevelName => _isOfficialLevel ? _officialLevelName : null;
 
         /// <summary>
         /// IChartPreview 接口实现 - 是否正在播放
@@ -103,7 +119,7 @@ namespace RDOnline.Component
 
         private void Update()
         {
-            // 如果当前是本地文件模式，只检查是否有新的社区关卡选择（用于切换）
+            // 如果当前是本地文件/官方关卡模式，只检查是否有新的社区关卡选择（用于切换）
             if (_previewFromLocalFile)
             {
                 if (SelectedLevel.Current != null && SelectedLevel.Current != _lastDisplayedLevel)
@@ -137,6 +153,8 @@ namespace RDOnline.Component
         {
             // 切换到社区关卡模式
             _previewFromLocalFile = false;
+            _isOfficialLevel = false;
+            _officialLevelName = null;
             _currentChartName = null;
             _lastDisplayedLevel = doc;
             UploadedChartUrl = !string.IsNullOrEmpty(doc.url2) ? doc.url2 : doc.url;
@@ -175,10 +193,51 @@ namespace RDOnline.Component
                 ProgressBar.transform.localScale = new Vector3(0f, ProgressBar.transform.localScale.y, ProgressBar.transform.localScale.z);
         }
 
+        /// <summary>
+        /// 切换到社区社区来源标签时调用：忘掉上一次的社区选择，回到「没有选谱面」的状态。
+        /// 否则从官方关卡/关卡库切回社区，预览会立刻弹出上一个谱面，看着像没切干净。
+        /// </summary>
+        public void ResetSelection()
+        {
+            _lastDisplayedLevel = null;
+            _previewFromLocalFile = false;
+            _isOfficialLevel = false;
+            _officialLevelName = null;
+            _currentChartName = null;
+            UploadedChartUrl = null;
+
+            OnChartAvailabilityChanged?.Invoke(false);
+
+            if (SongNameText != null) SongNameText.text = string.Empty;
+            if (AuthorText != null) AuthorText.text = string.Empty;
+            if (CoverImage != null) CoverImage.texture = null;
+
+            if (_loadCoverUrlCoroutine != null)
+            {
+                StopCoroutine(_loadCoverUrlCoroutine);
+                _loadCoverUrlCoroutine = null;
+            }
+
+            if (AudioSource != null && AudioSource.clip != null)
+            {
+                if (_isPlaying) Stop();
+                AudioSource.clip = null;
+            }
+
+            if (UploadButton != null)
+                UploadButton.interactable = false;
+
+            if (ProgressBar != null)
+                ProgressBar.transform.localScale =
+                    new Vector3(0f, ProgressBar.transform.localScale.y, ProgressBar.transform.localScale.z);
+        }
+
         private void ClearCommunityLevel()
         {
             // 切换到无谱面状态
             _previewFromLocalFile = false;
+            _isOfficialLevel = false;
+            _officialLevelName = null;
             _currentChartName = null;
             _lastDisplayedLevel = null;
             UploadedChartUrl = null;
@@ -196,11 +255,100 @@ namespace RDOnline.Component
         }
 
         /// <summary>
-        /// 文件浏览按钮：用 SFB 选择 .rdlevel，选中后预览该谱面并允许上传
+        /// 选择官方关卡：不上传、不打包。
+        /// 房间只携带 internal://关卡名，各端用游戏本体自带的关卡与音频加载，
+        /// 因此不存在版本不一致的问题。
+        /// </summary>
+        public void SelectOfficialLevel(string levelName)
+        {
+            if (!ChartSource.IsValidLevelName(levelName))
+            {
+                ScrAlert.Show("未知的官方关卡：" + levelName, true);
+                return;
+            }
+
+            _previewFromLocalFile = true;
+            _isOfficialLevel = true;
+
+            // 清空关卡库/社区谱面状态，避免 Update() 覆盖
+            _currentChartPath = null;
+            _currentChartFolder = null;
+            // 内部名（传输用）与显示名（界面/朗读用）严格分开：
+            // 显示走游戏本地化词条 levelSelect.<内部名>，传输只用内部枚举名。
+            _officialLevelName = levelName;
+            _currentChartName = ChartSource.GetLevelDisplayName(levelName);
+            _lastDisplayedLevel = null;
+            SelectedLevel.Set(null);
+
+            // 官方关卡：只带标识，不打包不上传
+            UploadedChartUrl = ChartSource.Internal(levelName);
+
+            if (SongNameText != null) SongNameText.text = _currentChartName;
+            if (AuthorText != null) AuthorText.text = "";
+            if (CoverImage != null) CoverImage.texture = null;
+            if (AudioSource != null && AudioSource.clip != null)
+            {
+                if (_isPlaying) Stop();
+                AudioSource.clip = null;
+            }
+            if (ProgressBar != null)
+                ProgressBar.transform.localScale = new Vector3(0f, ProgressBar.transform.localScale.y, ProgressBar.transform.localScale.z);
+
+            // 官方关卡无需上传，上传按钮直接进入完成态
+            if (UploadButton != null)
+            {
+                UploadButton.gameObject.SetActive(true);
+                UploadButton.interactable = false;
+            }
+
+            OnChartAvailabilityChanged?.Invoke(!string.IsNullOrEmpty(UploadedChartUrl));
+            OnUploadSuccess?.Invoke(UploadedChartUrl);
+
+            ScrAlert.Show("已选择官方关卡：" + _currentChartName, true);
+        }
+
+        /// <summary>
+        /// 选择玩家关卡库中的一个关卡：预览并在需要时整体打包上传该关卡目录。
+        /// </summary>
+        public void SelectLibraryLevel(string levelDirectory)
+        {
+            string main = ChartSource.FindMainRdlevel(levelDirectory);
+            if (string.IsNullOrEmpty(main))
+            {
+                ScrAlert.Show("该关卡目录里没有找到谱面文件", true);
+                return;
+            }
+
+            // 走与文件浏览相同的加载逻辑，但保留整个关卡目录用于打包
+            LoadChart(main);
+
+            // 目录名作为名称回退，文件名为 main.rdlevel 时更可读
+            if (!string.IsNullOrEmpty(levelDirectory))
+                _currentChartFolder = levelDirectory;
+
+            if (string.IsNullOrEmpty(_currentChartName))
+                _currentChartName = Path.GetFileName(levelDirectory);
+
+            OnChartAvailabilityChanged?.Invoke(!string.IsNullOrEmpty(UploadedChartUrl));
+        }
+
+        /// <summary>
+        /// 文件浏览按钮：用 SFB 选择 .rdlevel，选中后预览该谱面并允许上传。
+        /// 默认打开游戏自己的关卡库目录，玩家不必再翻文件树。
         /// </summary>
         private void OnFileBrowseClick()
         {
-            string path = FileDialog.FileDialog.GetFileDialog().OpenFile("选择文件", "",new FileDialog.OpenFileFilter
+            string basePath = "";
+            try
+            {
+                basePath = LevelValidation.CustomLevelsPath;
+            }
+            catch
+            {
+                // 取不到就用空串，退回对话框默认目录
+            }
+
+            string path = FileDialog.FileDialog.GetFileDialog().OpenFile("选择文件", basePath, new FileDialog.OpenFileFilter
             {
                 Filter = new Dictionary<string, List<string>>
                 {
@@ -240,6 +388,8 @@ namespace RDOnline.Component
             }
 
             _previewFromLocalFile = true;
+            _isOfficialLevel = false;
+            _officialLevelName = null;
             _currentChartPath = chartPath;
             _currentChartFolder = Path.GetDirectoryName(chartPath);
 
@@ -420,13 +570,26 @@ namespace RDOnline.Component
         }
 
         /// <summary>
-        /// 开始上传
+        /// 开始上传。官方关卡不上传，直接沿用已设置好的 internal:// 标识。
         /// </summary>
         private void StartUpload()
         {
             if (_isUploading)
             {
                 ScrAlert.Show("正在上传中，请稍候", true);
+                return;
+            }
+
+            // 官方关卡：各端自带，不上传封包
+            if (_isOfficialLevel)
+            {
+                // 必须用内部枚举名重算，_currentChartName 是本地化显示名
+                if (!ChartSource.IsInternal(UploadedChartUrl))
+                    UploadedChartUrl = ChartSource.Internal(_officialLevelName);
+
+                OnChartAvailabilityChanged?.Invoke(true);
+                OnUploadSuccess?.Invoke(UploadedChartUrl);
+                ScrAlert.Show("官方关卡无需上传，已就绪", true);
                 return;
             }
 
@@ -450,8 +613,8 @@ namespace RDOnline.Component
             if (UploadButton != null)
                 UploadButton.interactable = false;
 
-            // 1. 打包文件夹为zip
-            string zipPath = Path.Combine(Application.temporaryCachePath, "chart_temp.zip");
+            // 1. 打包文件夹为 rdzip（官方关卡包格式，zip 容器）
+            string zipPath = Path.Combine(Application.temporaryCachePath, "chart_temp.rdzip");
 
             // 删除旧的临时文件
             if (File.Exists(zipPath))
@@ -460,7 +623,7 @@ namespace RDOnline.Component
             // 创建zip文件
             yield return CreateZipFile(_currentChartFolder, zipPath);
 
-            // 2. 使用 123 云盘上传
+            // 2. 上传到自建谱面服务器
             byte[] fileData = File.ReadAllBytes(zipPath);
             string errorMsg = null;
             string resultUrl = null;
@@ -468,14 +631,8 @@ namespace RDOnline.Component
             yield return Pan123ChartUploader.Upload(
                 fileData,
                 UpdateProgress,
-                url =>
-                {
-                    resultUrl = url;
-                },
-                msg =>
-                {
-                    errorMsg = msg;
-                }
+                url => { resultUrl = url; },
+                msg => { errorMsg = msg; }
             );
 
             if (!string.IsNullOrEmpty(errorMsg))

@@ -24,10 +24,10 @@ public class ScnCheckUpdate : MonoBehaviour
     [Header("服务器")]
     [Tooltip("true=开发环境，false=生产环境")]
     public bool IsDev = true;
-    public string DevServerURL = "http://localhost:3004";
-    public string ProdServerURL = "https://rdonlineapi.rhythmdoctor.top";
+    public string DevServerURL = "http://47.238.109.184:3004";
+    public string ProdServerURL = "http://47.238.109.184:3004";
     /// <summary>当前使用的服务器 URL（由 IsDev 决定）</summary>
-    private string ServerURL => IsDev ? DevServerURL : ProdServerURL;
+    private string ServerURL => RDOnline.ModConfig.VersionCheckUrl;
 
     [Header("内置版本")]
     [Tooltip("当前客户端内置版本号，用于与服务器比较；服务器版本高于此值则提示前往官网更新")]
@@ -254,10 +254,14 @@ public class ScnCheckUpdate : MonoBehaviour
                     yield return null;
                 }
 
+                // 只有服务端确实下发了清单时才敢删本地多余文件。
+                // 清单为空（刚装好、服务端没配 files、或网络回了空列表）时若照删，
+                // 会把 CacheAssets 里刚拷进去的 RDOL.dll 和资源包全清掉，包一启动就自毁。
+                bool hasManifest = cloudFileDict.Count > 0;
                 foreach (var localPath in localFiles)
                 {
                     string fileName = Path.GetFileName(localPath);
-                    if (!cloudFileDict.ContainsKey(fileName))
+                    if (hasManifest && !cloudFileDict.ContainsKey(fileName))
                     {
                         try
                         {

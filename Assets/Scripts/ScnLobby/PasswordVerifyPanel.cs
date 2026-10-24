@@ -1,3 +1,4 @@
+using System.Collections;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
@@ -42,6 +43,9 @@ namespace RDOnline.ScnLobby
 
         private bool _isVerifying;
 
+        /// <summary>无障碍导航：显示时抢键盘，关闭时交还大厅。</summary>
+        private RDOnline.A11y.PasswordVerifyA11y _a11y;
+
         private void Awake()
         {
             // 单例模式
@@ -57,6 +61,9 @@ namespace RDOnline.ScnLobby
                 ConfirmButton.onClick.AddListener(OnConfirmClick);
             if (CancelButton != null)
                 CancelButton.onClick.AddListener(OnCancelClick);
+
+            // 无障碍导航，显示时才接管键盘
+            _a11y = RDOnline.A11y.PasswordVerifyA11y.Attach(this);
 
             // 初始化隐藏
             gameObject.SetActive(false);
@@ -95,6 +102,9 @@ namespace RDOnline.ScnLobby
                 PanelContainer.DOScale(Vector3.one, ShowDuration).SetEase(Ease.OutBack);
             }
 
+            // 弹窗盖住大厅，必须接管键盘；等弹出动画走完控件才可见，否则焦点落空
+            if (_a11y != null) StartCoroutine(TakeOverAfterShow());
+
             Debug.Log($"[PasswordVerifyPanel] 显示密码验证面板，房间: {roomName}");
         }
 
@@ -103,6 +113,9 @@ namespace RDOnline.ScnLobby
         /// </summary>
         private void Hide()
         {
+            // 键盘立刻还给大厅，用户不必等收起动画
+            if (_a11y != null) _a11y.Release();
+
             if (PanelContainer != null)
             {
                 PanelContainer.DOScale(Vector3.zero, HideDuration).SetEase(Ease.InBack).OnComplete(() =>
@@ -114,6 +127,13 @@ namespace RDOnline.ScnLobby
             {
                 gameObject.SetActive(false);
             }
+        }
+
+        /// <summary>等弹出动画结束、控件真正可见后再聚焦，否则导航器会把焦点略过。</summary>
+        private IEnumerator TakeOverAfterShow()
+        {
+            yield return new WaitForSeconds(ShowDuration);
+            if (_a11y != null && gameObject.activeInHierarchy) _a11y.TakeOver();
         }
 
         /// <summary>

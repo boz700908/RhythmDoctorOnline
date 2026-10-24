@@ -3,6 +3,7 @@ using UnityEngine.UI;
 using TMPro;
 using DG.Tweening;
 using RDOnline.Network;
+using RDOnline.A11y;
 
 namespace RDOnline.Auth
 {
@@ -43,6 +44,7 @@ namespace RDOnline.Auth
         private float _cooldownTimer;
         private TMP_Text _btnSendCodeText;
         private Vector2 _originPos;
+        private A11yNavigator _nav;
 
         private void Awake()
         {
@@ -51,18 +53,52 @@ namespace RDOnline.Auth
             // 默认隐藏
             CanvasGroup.alpha = 0;
             CanvasGroup.blocksRaycasts = false;
+
+            // 服务端已取消邮箱验证，这几个控件的流程不再存在，直接停用，
+            // 避免按键能够聚焦到一个点了没有意义的输入框
+            DisableUnusedFields();
+        }
+
+        private void DisableUnusedFields()
+        {
+            if (InputEmail != null) InputEmail.gameObject.SetActive(false);
+            if (InputCode != null) InputCode.gameObject.SetActive(false);
+            if (BtnSendCode != null) BtnSendCode.gameObject.SetActive(false);
         }
 
         private void Start()
         {
-            BtnSendCode.onClick.AddListener(OnSendCodeClick);
-            BtnRegister.onClick.AddListener(OnRegisterClick);
-            BtnBackToLogin.onClick.AddListener(OnBackToLoginClick);
-            _btnSendCodeText = BtnSendCode.GetComponentInChildren<TMP_Text>();
+            if (BtnRegister != null) BtnRegister.onClick.AddListener(OnRegisterClick);
+            if (BtnBackToLogin != null) BtnBackToLogin.onClick.AddListener(OnBackToLoginClick);
+
+            // 键盘/读屏导航：顺序即控件加入顺序，不依赖屏幕位置
+            SetupA11y();
+        }
+
+        /// <summary>用户名、密码、确认密码、注册、返回登录。</summary>
+        private void SetupA11y()
+        {
+            _nav = gameObject.GetComponent<A11yNavigator>();
+            if (_nav == null) _nav = gameObject.AddComponent<A11yNavigator>();
+
+            // 每个控件单独成组：上下光标就等同于原来的逐项移动
+            _nav.Clear();
+            _nav.AddRow(new A11yNavItem(InputUsername, "用户名"));
+            _nav.AddRow(new A11yNavItem(InputPassword, "密码"));
+            _nav.AddRow(new A11yNavItem(InputPassword2, "确认密码"));
+            if (BtnRegister != null) _nav.AddRow(new A11yNavItem(BtnRegister, "注册"));
+            if (BtnBackToLogin != null) _nav.AddRow(new A11yNavItem(BtnBackToLogin, "返回登录"));
+
+            // Esc 等同点返回登录，走它原有的面板切换逻辑
+            _nav.BackAction = () =>
+            {
+                if (BtnBackToLogin != null && BtnBackToLogin.interactable) BtnBackToLogin.onClick.Invoke();
+            };
         }
 
         private void Update()
         {
+            if (BtnSendCode == null) return;
             if (_cooldownTimer > 0)
             {
                 _cooldownTimer -= Time.deltaTime;
@@ -118,19 +154,12 @@ namespace RDOnline.Auth
         private void OnRegisterClick()
         {
             var username = InputUsername.text.Trim();
-            var email = InputEmail.text.Trim();
             var password = InputPassword.text;
-            var password2 = InputPassword2.text;
-            var code = InputCode.text.Trim();
+            var password2 = InputPassword2 != null ? InputPassword2.text : password;
 
             if (string.IsNullOrEmpty(username))
             {
                 ShowMessage("请输入用户名");
-                return;
-            }
-            if (string.IsNullOrEmpty(email))
-            {
-                ShowMessage("请输入邮箱");
                 return;
             }
             if (string.IsNullOrEmpty(password))
@@ -143,9 +172,10 @@ namespace RDOnline.Auth
                 ShowMessage("两次密码不一致");
                 return;
             }
-            if (string.IsNullOrEmpty(code))
+            // 与服务端同样的长度校验，本地先拦一次，免得白跑一趟网络
+            if (password.Length < 6)
             {
-                ShowMessage("请输入验证码");
+                ShowMessage("密码至少 6 位");
                 return;
             }
 
@@ -158,7 +188,8 @@ namespace RDOnline.Auth
             BtnRegister.interactable = false;
             ShowMessage("注册中...");
 
-            WebSocketManager.Instance.Send("auth/register", new { username, email, password, code }, (res) =>
+            // 邮箱不再采集，服务端把空值当作未填写
+            WebSocketManager.Instance.Send("auth/register", new { username, email = "", password }, (res) =>
             {
                 BtnRegister.interactable = true;
 
@@ -190,10 +221,14 @@ namespace RDOnline.Auth
                 .Join(Panel.DOAnchorPos(_originPos, AnimDuration).SetEase(Ease.OutCubic))
                 .Join(CanvasGroup.DOFade(1, AnimDuration))
                 .OnComplete(onComplete);
+
+            if (_nav != null) _nav.FocusFirst();
         }
 
         public void Hide(TweenCallback onComplete = null)
         {
+            // 隐藏期间不接收按键，否则会和登录面板抢输入
+            if (_nav != null) _nav.Deactivate();
             CanvasGroup.blocksRaycasts = false;
 
             DOTween.Sequence()
@@ -209,6 +244,8 @@ namespace RDOnline.Auth
                 TxtMessage.text = msg;
             }
             Debug.Log($"[Register] {msg}");
+            // 提示信息是屏幕上必须能听到的内容，随状态变化直接播报
+            A11yNavigator.SayInfo(msg);
         }
     }
 }

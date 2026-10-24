@@ -53,6 +53,15 @@ namespace RDOnline
         [Tooltip("当前人数")]
         public int PlayerCount;
 
+        /// <summary>
+        /// 谱面名，供界面与朗读使用。官方关卡按本端语言重新本地化，
+        /// 不直接使用远端传来的 ChartName（否则会跟随房主的客户端语言）。
+        /// </summary>
+        public string GetChartDisplayName()
+        {
+            return RDOnline.ScnLobby.ChartSource.GetDisplayName(ChartUrl, ChartName);
+        }
+
         [Header("房间玩家列表")]
         [Tooltip("房间内的玩家列表")]
         public List<RoomPlayerData> Players = new List<RoomPlayerData>();

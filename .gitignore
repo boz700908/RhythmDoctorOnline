@@ -76,3 +76,8 @@ Thumbs.db
 /RDOL
 /AssetBundles
 **/StreamingAssets/**
+
+# RDOL 出包产物与本地 BepInEx 解压目录
+/dist/
+/tools/bepinex5-win-x64/
+AssetBundles/win/

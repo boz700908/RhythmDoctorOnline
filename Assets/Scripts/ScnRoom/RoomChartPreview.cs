@@ -7,6 +7,7 @@ using UnityEngine.UI;
 using UnityEngine.Networking;
 using TMPro;
 using RDOnline.Audio;
+using RDOnline.ScnLobby;
 
 namespace RDOnline.ScnRoom
 {
@@ -81,6 +82,30 @@ namespace RDOnline.ScnRoom
 
             string content = File.ReadAllText(_chartFilePath);
             ParseChartData(content);
+        }
+
+        /// <summary>
+        /// 显示官方关卡信息。官方关卡的谱面与音频都在游戏本体里，
+        /// 这里只显示名称，不做下载与解析。
+        /// </summary>
+        public void LoadOfficialLevel(string levelName)
+        {
+            _chartFilePath = null;
+            _chartDirectory = null;
+
+            if (IsPlaying)
+                Stop();
+            if (AudioSource != null)
+                AudioSource.clip = null;
+            if (CoverImage != null)
+                CoverImage.texture = null;
+
+            if (SongNameText != null)
+                SongNameText.text = ChartSource.GetLevelDisplayName(levelName);
+            if (AuthorText != null)
+                AuthorText.text = "";
+
+            Debug.Log($"[RoomChartPreview] 官方关卡: {levelName}");
         }
 
         /// <summary>

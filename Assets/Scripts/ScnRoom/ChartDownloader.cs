@@ -4,6 +4,7 @@ using System.IO;
 using UnityEngine;
 using UnityEngine.Networking;
 using UnityEngine.UI;
+using RDOnline.ScnLobby;
 
 namespace RDOnline.ScnRoom
 {
@@ -33,6 +34,17 @@ namespace RDOnline.ScnRoom
         private Action<string> _lastOnError;
         private UnityWebRequest _currentRequest;
         private bool _cancelRequested = false;
+        private string _currentLevelName;
+
+        /// <summary>
+        /// 当前谱面是否为官方关卡（官方关卡在游戏本体里，无需下载）
+        /// </summary>
+        public bool IsOfficialLevel { get; private set; }
+
+        /// <summary>
+        /// 官方关卡名（Level 枚举名），非官方谱面为 null
+        /// </summary>
+        public string OfficialLevelName => IsOfficialLevel ? _currentLevelName : null;
 
         private void Awake()
         {
@@ -92,6 +104,37 @@ namespace RDOnline.ScnRoom
             _currentChartUrl = chartUrl;
             _lastOnSuccess = onSuccess;
             _lastOnError = onError;
+
+            // 官方关卡：所有客户端游戏本体里都有同一份关卡与音频，只传标识不传文件
+            if (ChartSource.IsInternal(chartUrl))
+            {
+                string levelName = ChartSource.GetLevelName(chartUrl);
+                if (!ChartSource.IsValidLevelName(levelName))
+                {
+                    Debug.LogError($"[ChartDownloader] 未知的官方关卡: {levelName}");
+                    onError?.Invoke("未知的官方关卡：" + levelName);
+                    return;
+                }
+
+                IsOfficialLevel = true;
+                _currentLevelName = levelName;
+
+                // 清掉上一局的谱面目录，避免进游戏时误命中旧谱面
+                CleanChartDirectory();
+                SetRetryButtonVisible(false);
+                UpdateProgressBar(0f);
+                SetReadyButtonInteractable(true);
+
+                if (ChartPreview != null)
+                    ChartPreview.LoadOfficialLevel(levelName);
+
+                Debug.Log($"[ChartDownloader] 官方关卡无需下载: {levelName}");
+                onSuccess?.Invoke();
+                return;
+            }
+
+            IsOfficialLevel = false;
+            _currentLevelName = null;
             StartCoroutine(DownloadChartCoroutine(chartUrl, onSuccess, onError));
         }
 

@@ -68,7 +68,8 @@ namespace RDOnline.ScnLobby
             _hasPassword = hasPassword;
             _status = status;
             _chartUrl = chartUrl;
-            _chartName = chartName;
+            // 官方关卡一律用本端语言的关卡名显示，不受房主客户端语言影响
+            _chartName = ChartSource.GetDisplayName(chartUrl, chartName);
             _ownerId = ownerId;
 
             // 更新UI显示
@@ -131,7 +132,7 @@ namespace RDOnline.ScnLobby
                 _chartUrl = chartUrl;
 
             if (chartName != null)
-                _chartName = chartName;
+                _chartName = ChartSource.GetDisplayName(_chartUrl, chartName);
 
             if (ownerId.HasValue)
                 _ownerId = ownerId.Value;

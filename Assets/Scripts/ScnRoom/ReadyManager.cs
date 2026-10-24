@@ -3,6 +3,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using RDOnline.Network;
 using RDOnline.Utils;
+using RDOnline.ScnLobby;
 using System.Diagnostics;
 using System.IO;
 using UnityEngine.SceneManagement;
@@ -242,7 +243,25 @@ namespace RDOnline.ScnRoom
 
             RoomData.IsReturningFromGame = true;
 
-            // 默认加载找到的第一个 .rdlevel 文件（仅用于校验与日志，实际进游戏逻辑保持原样）
+            // 官方关卡：所有客户端都有同一份本体，直接按关卡名交给游戏加载
+            string officialLevel = ChartDownloader.Instance != null
+                ? ChartDownloader.Instance.OfficialLevelName
+                : ChartSource.GetLevelName(RoomData.Instance != null ? RoomData.Instance.ChartUrl : null);
+
+            if (!string.IsNullOrEmpty(officialLevel))
+            {
+                if (!ChartSource.IsValidLevelName(officialLevel))
+                {
+                    UnityEngine.Debug.LogError("[ReadyManager] 未知的官方关卡: " + officialLevel);
+                    ScrAlert.Show("未知的官方关卡", true);
+                    return;
+                }
+                Debug.Log("Enter official level：" + officialLevel);
+                GameUtils.LoadLevel(officialLevel);
+                return;
+            }
+
+            // 玩家关卡库：加载已下载解压的 .rdlevel
             string chartDir = ChartDownloader.Instance != null
                 ? ChartDownloader.Instance.GetChartDirectory()
                 : Path.Combine(Application.persistentDataPath, "Chart");
