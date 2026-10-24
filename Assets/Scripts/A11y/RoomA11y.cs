@@ -4,6 +4,8 @@ using UnityEngine.UI;
 using UnityEngine.SceneManagement;
 using TMPro;
 using RDOnline.A11y;
+using RDOnline.Auth;
+using RDOnline.Component;
 
 namespace RDOnline.ScnRoom
 {
@@ -37,6 +39,14 @@ namespace RDOnline.ScnRoom
         private ScorePanelController _scorePanel;
         private RoomChartPreview _chartPreview;
         private RoomLeaver _leaver;
+        private ChatManager _chat;
+        private UserInfoUI _userInfo;
+
+        /// <summary>上一条已朗读的聊天消息，用来只报新到的那条。</summary>
+        private GameObject _lastChatItem;
+
+        /// <summary>上一条已朗读的在线人数，变了才再读。</summary>
+        private string _lastOnline;
 
         private readonly List<Group> _groups = new List<Group>();
         private readonly List<GameObject> _knownRoots = new List<GameObject>();
@@ -83,11 +93,21 @@ namespace RDOnline.ScnRoom
 
             RefreshRefs();
             Rebuild(true);
+
+            if (_chat != null && _chat.MessageListContent != null && _chat.MessageListContent.childCount > 0)
+            {
+                Transform content = _chat.MessageListContent;
+                _lastChatItem = content.GetChild(content.childCount - 1).gameObject;
+            }
         }
 
         private void Update()
         {
             RefreshRefs();
+
+            // 消息要尽快读出来，不受下面半秒扫描的节流
+            WatchChat();
+            WatchOnline();
 
             // 玩家、准备状态、面板开合都由网络与按钮改变，半秒足够跟上，
             // 同时避免每帧建对象
@@ -123,6 +143,8 @@ namespace RDOnline.ScnRoom
             if (_scorePanel == null) _scorePanel = ScorePanelController.Instance;
             if (_chartPreview == null) _chartPreview = Object.FindObjectOfType<RoomChartPreview>();
             if (_leaver == null) _leaver = Object.FindObjectOfType<RoomLeaver>();
+            if (_chat == null) _chat = Object.FindObjectOfType<ChatManager>();
+            if (_userInfo == null) _userInfo = Object.FindObjectOfType<UserInfoUI>();
         }
 
         // ---------- 组装 ----------
@@ -133,17 +155,44 @@ namespace RDOnline.ScnRoom
             var used = new HashSet<GameObject>();
 
             AddInfoGroup(groups);
+            AddUserInfoGroup(groups);
             AddPlayerGroups(groups, used);
             AddChartGroups(groups, used);
             AddActionGroups(groups, used);
             AddEditPanelGroups(groups, used);
             AddScoreGroups(groups, used);
+            AddChatGroups(groups, used);
             AddExtras(groups, used);
 
             return groups;
         }
 
         /// <summary>房间信息整条读一句，不占焦点以外的位置。</summary>
+        /// <summary>
+        /// 用户自己那一行：用户名、延迟、在线人数。都是屏幕上看得见的字，
+        /// 所以逐条列出来让人上下光标听，但它们不是按钮，不占其他位置。
+        /// </summary>
+        private void AddUserInfoGroup(List<Group> groups)
+        {
+            if (_userInfo == null) return;
+
+            var group = new Group { Name = A11yPhrases.Text("我的信息", "My info") };
+            UserInfoSpeech.AddItems(group.Items, _userInfo);
+
+            if (group.Items.Count > 0) groups.Add(group);
+        }
+
+        /// <summary>在线人数变化时直接读一句，不抢焦点。</summary>
+        private void WatchOnline()
+        {
+            if (_userInfo == null) return;
+
+            string speech = UserInfoSpeech.WatchOnline(_userInfo, ref _lastOnline);
+            if (string.IsNullOrEmpty(speech)) return;
+
+            A11yNavigator.SayInfo(speech, NarrationCategory.Notification);
+        }
+
         private void AddInfoGroup(List<Group> groups)
         {
             var group = new Group { Name = A11yPhrases.Text("房间信息", "Room info") };
@@ -425,6 +474,100 @@ namespace RDOnline.ScnRoom
         }
 
         /// <summary>
+        /// 聊天。房间里只有这一个聊天面板是活的（大厅那份在场景里是关着的），
+        /// 所以消息列表、输入框、发送按钮都归到这里。
+        /// 消息逐条作为一个项，可以用左右光标从头翻到尾。
+        /// </summary>
+        private void AddChatGroups(List<Group> groups, HashSet<GameObject> used)
+        {
+            if (_chat == null) return;
+            if (_chat.MessageListContent == null && _chat.InputField == null) return;
+
+            var history = new Group { Name = A11yPhrases.Text("聊天消息", "Chat messages") };
+            if (_chat.MessageListContent != null)
+            {
+                Transform content = _chat.MessageListContent;
+                for (int i = 0; i < content.childCount; i++)
+                {
+                    Transform child = content.GetChild(i);
+                    if (child == null || !child.gameObject.activeSelf) continue;
+
+                    var text = child.GetComponentInChildren<TMP_Text>(true);
+                    if (text == null || string.IsNullOrEmpty(text.text)) continue;
+
+                    history.Items.Add(new A11yNavItem(text, A11yPhrases.Text("消息", "Message")));
+                    used.Add(child.gameObject);
+                }
+            }
+
+            if (history.Items.Count > 0)
+            {
+                groups.Add(history);
+            }
+            else
+            {
+                // 还没有人说话，给一条占位说明，用户也能确认聊天区是空的
+                var empty = new Group { Name = A11yPhrases.Text("聊天消息", "Chat messages") };
+                GameObject anchorGo = _chat.MessageListContent != null
+                    ? _chat.MessageListContent.gameObject
+                    : _chat.gameObject;
+                empty.Items.Add(A11yNavItem.Custom(anchorGo, A11yItemKind.Label,
+                    A11yPhrases.Text("聊天消息", "Chat messages"),
+                    () => A11yPhrases.Text("还没有消息", "No messages yet"), null));
+                used.Add(anchorGo);
+                groups.Add(empty);
+            }
+
+            var compose = new Group { Name = A11yPhrases.Text("发言", "Say something") };
+            AddInput(compose, _chat.InputField, used, A11yPhrases.Text("聊天输入框", "Chat box"));
+            AddIfVisible(compose, _chat.SendButton, used, A11yPhrases.Text("发送", "Send"));
+            if (compose.Items.Count > 0) groups.Add(compose);
+        }
+
+        /// <summary>
+        /// 盯住消息列表：新到的一条用提示类别直接读出来，不动焦点。
+        /// 消息只往末尾追加，所以记住上次看到的那一项就够了。
+        /// </summary>
+        private void WatchChat()
+        {
+            if (_chat == null || _chat.MessageListContent == null) return;
+
+            Transform content = _chat.MessageListContent;
+            if (content.childCount == 0)
+            {
+                _lastChatItem = null;
+                return;
+            }
+
+            GameObject newest = content.GetChild(content.childCount - 1).gameObject;
+            if (newest == _lastChatItem) return;
+
+            bool hadPrevious = _lastChatItem != null;
+            _lastChatItem = newest;
+
+            // 刚进房间时列表里已有的旧消息不念，免得一进门就被灌一耳朵
+            if (!hadPrevious) return;
+
+            var text = newest.GetComponentInChildren<TMP_Text>(true);
+            string message = text != null ? PlainText(text.text) : null;
+            if (string.IsNullOrEmpty(message)) return;
+
+            A11yNavigator.SayInfo(message, NarrationCategory.Notification);
+        }
+
+        /// <summary>
+        /// 消息里用户名用富文本高亮，朗读前要把标签去掉，
+        /// 否则旁白会念出 color 之类的内容。
+        /// </summary>
+        private static string PlainText(string text)
+        {
+            if (string.IsNullOrEmpty(text)) return text;
+
+            string result = System.Text.RegularExpressions.Regex.Replace(text, "<[^>]*>", string.Empty);
+            return result.Trim();
+        }
+
+        /// <summary>
         /// 兜底：场景里还没有被任何一组收进来的按钮都收进来，
         /// 保证能点的东西一个不漏。
         /// </summary>
@@ -515,6 +658,16 @@ namespace RDOnline.ScnRoom
                 if (now[i] != _knownRoots[i]) return false;
             }
             return true;
+        }
+
+        /// <summary>
+        /// 临时盖在上面的弹窗（断线提示等）关掉后，把键盘交回来，位置不变。
+        /// </summary>
+        public void Resume()
+        {
+            if (_nav == null) return;
+            Rebuild(false);
+            _nav.Resume(true);
         }
 
         /// <summary>按当前组重建整份清单。切格、换人都走这里。</summary>

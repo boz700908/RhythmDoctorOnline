@@ -6,6 +6,7 @@ using UnityEngine.SceneManagement;
 using TMPro;
 using RhythmCafe.Level;
 using RDOnline.ScnLobby;
+using RDOnline.Auth;
 
 namespace RDOnline.A11y
 {
@@ -32,11 +33,13 @@ namespace RDOnline.A11y
         private RoomCreator _creator;
         private ScrLevelList _chartList;
         private ChartPanelA11y _chartPanel;
+        private UserInfoUI _userInfo;
 
         private readonly List<A11yNavItem> _roomItems = new List<A11yNavItem>();
         private readonly List<A11yNavItem> _buttonItems = new List<A11yNavItem>();
         private readonly List<List<A11yNavItem>> _creatorRows = new List<List<A11yNavItem>>();
         private readonly List<A11yNavItem> _extraItems = new List<A11yNavItem>();
+        private readonly List<A11yNavItem> _userInfoItems = new List<A11yNavItem>();
 
         private readonly List<GameObject> _knownRooms = new List<GameObject>();
         private readonly List<GameObject> _knownButtons = new List<GameObject>();
@@ -45,10 +48,16 @@ namespace RDOnline.A11y
         private bool _introSpoken;
         private Coroutine _deferredRebuild;
 
+        /// <summary>上一条已朗读的在线人数，变了才再读。</summary>
+        private string _lastOnline;
+
+        private bool _userInfoBuilt;
+
         private static string RowRoomName => A11yPhrases.Text("房间列表", "Room list");
         private static string RowButtonName => A11yPhrases.Text("按钮", "Buttons");
         private static string RowCreateName => A11yPhrases.Text("创建房间", "Create room");
         private static string RowExtraName => A11yPhrases.Text("其他按钮", "Other buttons");
+        private static string RowUserInfoName => A11yPhrases.Text("我的信息", "My info");
 
         /// <summary>
         /// 场景加载完成后自动挂载。不依赖场景里预先摆好组件，也不改任何场景文件。
@@ -112,6 +121,7 @@ namespace RDOnline.A11y
             if (_chartList == null) _chartList = Object.FindObjectOfType<ScrLevelList>();
             if (_chartPanel == null && _chartList != null)
                 _chartPanel = _chartList.GetComponent<ChartPanelA11y>();
+            if (_userInfo == null) _userInfo = Object.FindObjectOfType<UserInfoUI>();
         }
 
         /// <summary>把谱面面板收进来托管，保证同一时刻只有一个控制器收键。</summary>
@@ -142,6 +152,7 @@ namespace RDOnline.A11y
 
                 RefreshRefs();
                 AdoptChartPanel();
+                WatchOnline();
 
                 bool changed = false;
 
@@ -177,6 +188,9 @@ namespace RDOnline.A11y
 
                     // 创建房间面板的控件由场景摆放，第一次进面板时才收进来
                     if (_creatorRows.Count == 0) BuildCreator();
+
+                    // 用户信息只建一次：三项都是只读文本，位置和数量不会变
+                    if (!_userInfoBuilt) BuildUserInfo();
                 }
 
                 if (changed) RebuildAll(false);
@@ -312,6 +326,33 @@ namespace RDOnline.A11y
             {
                 AddButtonItem(_buttonItems, buttons[i]);
             }
+        }
+
+        // ---------- 用户信息组 ----------
+
+        /// <summary>
+        /// 大厅右上角的用户名、延迟、在线人数。三项只读，逐条列出来让人听。
+        /// </summary>
+        private void BuildUserInfo()
+        {
+            if (_userInfo == null) return;
+
+            _userInfoItems.Clear();
+            UserInfoSpeech.AddItems(_userInfoItems, _userInfo);
+
+            // 三项都没建出来说明控件还没就绪，下次巡检再试
+            if (_userInfoItems.Count > 0) _userInfoBuilt = true;
+        }
+
+        /// <summary>在线人数变化时直接读一句，不抢焦点。</summary>
+        private void WatchOnline()
+        {
+            if (_userInfo == null) return;
+
+            string speech = UserInfoSpeech.WatchOnline(_userInfo, ref _lastOnline);
+            if (string.IsNullOrEmpty(speech)) return;
+
+            A11yNavigator.SayInfo(speech, NarrationCategory.Notification);
         }
 
         // ---------- 创建房间组 ----------
@@ -487,6 +528,13 @@ namespace RDOnline.A11y
 
             _nav.StartRow(RowExtraName);
             for (int i = 0; i < _extraItems.Count; i++) _nav.Add(_extraItems[i]);
+
+            // 用户名/延迟/在线人数放在最后，前面的操作项不受它影响
+            if (_userInfoItems.Count > 0)
+            {
+                _nav.StartRow(RowUserInfoName);
+                for (int i = 0; i < _userInfoItems.Count; i++) _nav.Add(_userInfoItems[i]);
+            }
 
             // 焦点只在没有别的弹窗（密码框等）占着键盘时才动，
             // 否则重建清单会把键盘从弹窗手里抢回来，用户正在输入的框会失去焦点

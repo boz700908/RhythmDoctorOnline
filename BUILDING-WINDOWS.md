@@ -1,6 +1,6 @@
 # 在 Windows 上出包
 
-一键出包需要三样东西：Unity 编辑器、BepInEx 5、以及仓库本身的源码。
+一键出包只需要一样东西：Unity 编辑器。BepInEx 5 加载器与游戏程序集都随仓库自带。
 
 ## 一、准备
 
@@ -17,17 +17,21 @@
 set RDOL_UNITY=C:\Program Files\Unity\Hub\Editor\2022.3.62f3c1\Editor\Unity.exe
 ```
 
-### 2. BepInEx 5（Windows x64）
+### 2. BepInEx 5（Windows x64）——仓库已自带
 
-下载 `BepInEx_win_x64_5.4.23.5.zip`，解压到仓库下的 **`tools\bepinex5-win-x64\`**，
-放好之后这个目录里应该直接能看到 `winhttp.dll`：
+**不需要下载。** 加载器随仓库放在 **`tools\bepinex5-win-x64\`**，版本 5.4.23.5
+（Doorstop 4.5.0），出包脚本直接从这里拼整包。克隆完整后这个目录里应该有：
 
 ```
 RhythmDoctorOnline\tools\bepinex5-win-x64\winhttp.dll
 RhythmDoctorOnline\tools\bepinex5-win-x64\doorstop_config.ini
 RhythmDoctorOnline\tools\bepinex5-win-x64\.doorstop_version
-RhythmDoctorOnline\tools\bepinex5-win-x64\BepInEx\...
+RhythmDoctorOnline\tools\bepinex5-win-x64\BepInEx\core\...
 ```
+
+这个目录里的文件是仓库内容的一部分，**不要改成自己的版本**，否则打出来的包每个人
+跑的加载器都不一样。升级时整目录替换，并同步改 `build-windows.bat` 顶部的注释与
+`tools\bepinex5-win-x64\README.md` 里的版本号。
 
 只支持 **BepInEx 5**。BepInEx 6 去掉了 RDOL 依赖的 `BepInEx.Harmony` 接口，装上去插件不加载。
 

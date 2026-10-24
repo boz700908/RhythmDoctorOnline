@@ -10,8 +10,8 @@ rem    build-windows.bat "C:\Games\Rhythm Doctor"   ... and install into that ga
 rem
 rem  What you need:
 rem    - Unity 2022.3.62f3c1 with the Windows Build Support (Mono) module
-rem    - the BepInEx 5 win_x64 files, unzipped into tools\bepinex5-win-x64
-rem      (winhttp.dll, doorstop_config.ini, .doorstop_version, BepInEx\...)
+rem    - nothing else: the BepInEx 5 win_x64 loader ships with this repo in
+rem      tools\bepinex5-win-x64 (winhttp.dll, doorstop_config.ini, BepInEx\...)
 rem
 rem  Output layout is checked against the runtime code; see
 rem  BUILDING-WINDOWS.md before changing anything here.
@@ -62,8 +62,9 @@ echo [RDOL] unity     : %UNITY%
 
 rem ---------- 2. check BepInEx ----------
 if not exist "%BEPINEX%\winhttp.dll" (
-  echo [RDOL] ERROR: BepInEx 5 not found in %BEPINEX%
-  echo [RDOL] Unzip BepInEx_win_x64_5.4.23.5.zip there so winhttp.dll is in that folder.
+  echo [RDOL] ERROR: BepInEx 5 loader missing at %BEPINEX%\winhttp.dll
+  echo [RDOL] It ships with the repo. Re-clone, or restore that folder from git:
+  echo [RDOL] git checkout -- tools/bepinex5-win-x64
   goto :fail
 )
 
