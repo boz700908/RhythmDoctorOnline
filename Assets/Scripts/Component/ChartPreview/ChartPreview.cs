@@ -14,7 +14,6 @@ using RDOnline.Audio;
 using RhythmCafe.Level;
 using RDOnline.ScnLobby;
 using RDOnline.Utils;
-using SFB;
 
 namespace RDOnline.Component
 {
@@ -333,7 +332,7 @@ namespace RDOnline.Component
         }
 
         /// <summary>
-        /// 文件浏览按钮：用 SFB 选择 .rdlevel，选中后预览该谱面并允许上传。
+        /// 文件浏览按钮：用内置的文件对话框选择 .rdlevel，选中后预览该谱面并允许上传。
         /// 默认打开游戏自己的关卡库目录，玩家不必再翻文件树。
         /// </summary>
         private void OnFileBrowseClick()
