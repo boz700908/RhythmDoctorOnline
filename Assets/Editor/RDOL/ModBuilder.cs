@@ -345,7 +345,8 @@ namespace RDOL.Editor
             Debug.Log("[RDOL] 已装进游戏：" + gameDir);
         }
 
-        static void CopyDirectory(string source, string target, string[] excludeRelative)
+        /// <summary>递归复制整个目录；不必排除任何相对路径时 excludeRelative 传 null 即可。</summary>
+        static void CopyDirectory(string source, string target, string[] excludeRelative = null)
         {
             string sourceRoot = source.Replace('\\', '/').TrimEnd('/') + "/";
 
